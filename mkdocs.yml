@@ -20,6 +20,7 @@ nav:
       - Getting started: project/getting-started.md
       - Fixtures and charts: project/fixtures.md
       - Development: project/development.md
+      - CI: project/ci.md
       - Releasing: project/releasing.md
 
 theme:

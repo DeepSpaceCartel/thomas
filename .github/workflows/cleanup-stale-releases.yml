@@ -1,0 +1,56 @@
+name: cleanup-stale-releases
+
+# Safety net for real-tests.yml's `if: always()` teardown step: that
+# step runs on a graceful cancel, but not on a hard job timeout or a
+# runner crash mid-run. thomas-helm-test is one fixed, shared namespace
+# (not one per run — real-tests.yml serializes runs against it
+# instead), so anything left behind after real-tests.yml's own timeout
+# window is unambiguously stale: nothing else could legitimately be
+# using that namespace concurrently. Also sweeps orphaned Secrets Helm
+# doesn't own (e.g. test-tls-demo's cert-manager-issued Secret — `helm
+# uninstall` only removes what Helm itself templated).
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  cleanup:
+    runs-on: thomas
+    timeout-minutes: 10
+    steps:
+      - uses: azure/setup-kubectl@v5
+      - uses: azure/setup-helm@v5
+
+      - name: Write kubeconfig
+        run: |
+          umask 077
+          echo "${{ secrets.THOMAS_CI_KUBECONFIG }}" > "$RUNNER_TEMP/kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/kubeconfig" >> "$GITHUB_ENV"
+
+      - name: Delete Helm releases older than 1 hour
+        run: |
+          cutoff=$(date -u -d '1 hour ago' +%s)
+          helm list -n thomas-helm-test -o json |
+            jq -r '.[] | [.name, .updated] | @tsv' |
+            while IFS=$'\t' read -r name updated; do
+              updated_ts=$(date -u -d "$updated" +%s)
+              if [ "$updated_ts" -lt "$cutoff" ]; then
+                echo "Uninstalling stale release $name (updated $updated)"
+                helm uninstall "$name" -n thomas-helm-test
+              fi
+            done
+
+      - name: Delete orphaned (non-Helm-owned) Secrets older than 1 hour
+        run: |
+          cutoff=$(date -u -d '1 hour ago' +%s)
+          kubectl get secret -n thomas-helm-test -o json |
+            jq -r '.items[] | select(.type != "helm.sh/release.v1") | [.metadata.name, .metadata.creationTimestamp] | @tsv' |
+            while IFS=$'\t' read -r name created; do
+              created_ts=$(date -u -d "$created" +%s)
+              if [ "$created_ts" -lt "$cutoff" ]; then
+                echo "Deleting orphaned secret $name (created $created)"
+                kubectl delete secret "$name" -n thomas-helm-test
+              fi
+            done

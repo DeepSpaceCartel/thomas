@@ -24,6 +24,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   (Contributor Covenant v2.1), `CONTRIBUTING.md`, `SECURITY.md`
   (private reporting via GitHub Security Advisories), `CODEOWNERS`, and
   a weekly `dependabot.yml` (npm, pip, GitHub Actions).
+- **Real-cluster CI** (`.github/workflows/{real-tests,cleanup-stale-releases}.yml`,
+  `docs/project/ci.md`) — a second, gated CI tier that runs the actual
+  `npm test` (real `helm`/`kubectl`/HTTP against a real cluster) on a
+  self-hosted runner living inside it, alongside the existing
+  GitHub-hosted `--dry-run` tier that still runs for anyone. Gated to
+  `push: main` and same-repo `pull_request` only — never exposes the
+  cluster credential to a fork PR. `thomas-helm-test` is one fixed,
+  shared namespace, so runs are fully serialized; an hourly job sweeps
+  anything a crashed/timed-out run leaves behind. Both workflows are
+  inert until the cluster-side runner/RBAC/secret are provisioned
+  (tracked separately, not in this repo).
 
 ### Changed
 
@@ -35,6 +46,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   to the published docs site. `mkdocs.yml`'s `site_url` corrected to the
   real custom domain (`alexander.ilyin.eu/Thomas`, was still the
   default `github.io` URL).
+- **Repo moved to `DeepSpaceCartel/thomas`** (from `alexanderilyin/Thomas`)
+  — every hardcoded repo/compare/release/advisories link updated
+  accordingly across `CHANGELOG.md`, `README.md`, `mkdocs.yml`,
+  `.github/{SECURITY,CODE_OF_CONDUCT}.md`, and
+  `docs/{project/fixtures,concepts/installing}.md`. The custom Pages
+  domain and the maintainer's own GitHub profile link are unaffected.
 
 ### Fixed
 
