@@ -17,6 +17,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   section into a dated one, and opens a PR for review; merging it tags
   the release and creates a GitHub Release with notes from that section.
   No npm publish. See `docs/project/releasing.md`.
+- **Community health files** (`.github/`) — YAML-form issue templates
+  (bug report, feature request), a pull request template checklist
+  grounded in this repo's real discipline (CHANGELOG entry, a real
+  cluster run for step-definition changes), `CODE_OF_CONDUCT.md`
+  (Contributor Covenant v2.1), `CONTRIBUTING.md`, `SECURITY.md`
+  (private reporting via GitHub Security Advisories), `CODEOWNERS`, and
+  a weekly `dependabot.yml` (npm, pip, GitHub Actions).
+
+### Changed
+
+- **`README.md`** rewritten to lead with the same "why this matters"
+  narrative as `docs/index.md` (Why this exists, the complete real
+  `features/quickstart.feature`), replaced the dev-only `## Running`
+  section with the real content of `docs/concepts/installing.md`
+  (installing Thomas into another project), and added a prominent link
+  to the published docs site. `mkdocs.yml`'s `site_url` corrected to the
+  real custom domain (`alexander.ilyin.eu/Thomas`, was still the
+  default `github.io` URL).
+
+### Fixed
+
+- **`release-publish.yaml` could auto-publish a release with no PR/review
+  involved** — it originally inferred "a release-prepare PR just merged"
+  purely from repo file state (`CHANGELOG.md`'s topmost dated section
+  not yet tagged), so *any* push to `main` that happened to leave the
+  repo in that state would trigger a publish. This happened for real:
+  the first push of this automation to `main` auto-published `v0.1.0`,
+  since `CHANGELOG.md`/`package.json` already described an untagged
+  `0.1.0` from before the automation existed. Now gated on the PR event
+  itself (`merged == true` + a `release/v*` head branch) — file state is
+  still cross-checked as defense in depth, but no longer the trigger.
 
 ## [0.1.0] - 2026-09-09
 
