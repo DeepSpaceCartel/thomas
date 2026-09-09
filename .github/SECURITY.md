@@ -5,9 +5,9 @@
 Please **do not** open a public issue for a security vulnerability.
 
 Instead, use GitHub's private reporting flow: go to the
-[Security tab](https://github.com/alexanderilyin/Thomas/security) of
+[Security tab](https://github.com/DeepSpaceCartel/thomas/security) of
 this repository and select **"Report a vulnerability"** (or go directly
-to [github.com/alexanderilyin/Thomas/security/advisories/new](https://github.com/alexanderilyin/Thomas/security/advisories/new)).
+to [github.com/DeepSpaceCartel/thomas/security/advisories/new](https://github.com/DeepSpaceCartel/thomas/security/advisories/new)).
 This opens a private GitHub Security Advisory visible only to the
 maintainer — nothing is published until a fix is ready.
 

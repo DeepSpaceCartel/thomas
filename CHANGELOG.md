@@ -100,5 +100,5 @@ and HTTP, built on `@cucumber/cucumber` + TypeScript.
   and `mkdocs build --strict` on every push/PR. GitHub Pages deploy
   (`.github/workflows/docs.yaml`) on push to `main`.
 
-[Unreleased]: https://github.com/alexanderilyin/Thomas/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/alexanderilyin/Thomas/releases/tag/v0.1.0
+[Unreleased]: https://github.com/DeepSpaceCartel/thomas/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/DeepSpaceCartel/thomas/releases/tag/v0.1.0

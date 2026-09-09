@@ -1,8 +1,8 @@
 site_name: Thomas | Trust but Verify
 site_description: Real-command BDD testing for Helm, Kubernetes, and HTTP services.
 site_url: https://alexander.ilyin.eu/Thomas/
-repo_url: https://github.com/alexanderilyin/Thomas
-repo_name: alexanderilyin/Thomas
+repo_url: https://github.com/DeepSpaceCartel/thomas
+repo_name: DeepSpaceCartel/thomas
 edit_uri: edit/main/docs/
 
 nav:

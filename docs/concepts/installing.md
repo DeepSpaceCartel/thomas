@@ -12,7 +12,7 @@ This package is not published to a registry yet — install it as a git
 dependency:
 
 ```bash
-npm install github:alexanderilyin/Thomas
+npm install github:DeepSpaceCartel/thomas
 ```
 
 ## Wire up your own `cucumber.mjs`

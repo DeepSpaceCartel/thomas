@@ -53,7 +53,7 @@ officially representing the community in public spaces.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may
-be reported confidentially via [GitHub Security Advisories](https://github.com/alexanderilyin/Thomas/security/advisories/new)
+be reported confidentially via [GitHub Security Advisories](https://github.com/DeepSpaceCartel/thomas/security/advisories/new)
 on this repository — that report is only visible to the maintainer,
 [@alexanderilyin](https://github.com/alexanderilyin). All complaints
 will be reviewed and investigated promptly and fairly.

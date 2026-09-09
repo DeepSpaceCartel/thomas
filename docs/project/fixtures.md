@@ -1,13 +1,13 @@
 # Fixtures and charts
 
-The [`charts/`](https://github.com/alexanderilyin/Thomas/tree/main/charts)
+The [`charts/`](https://github.com/DeepSpaceCartel/thomas/tree/main/charts)
 directory contains small deployable fixtures used by the real integration
 tests. Files used by upload/download scenarios live under
 `features/fixtures/` (e.g. `hello.txt`, used by
 [REST](../reference/REST.md)'s file-upload examples). Nothing here is
 mocked — a fixture exists to prove one real, observable behavior.
 
-## [`charts/test-nginx/`](https://github.com/alexanderilyin/Thomas/tree/main/charts/test-nginx)
+## [`charts/test-nginx/`](https://github.com/DeepSpaceCartel/thomas/tree/main/charts/test-nginx)
 
 Minimal, off-the-shelf `nginx` image — a Deployment, Service, and
 test-hook Pod, zero custom application logic. The default template for
@@ -30,7 +30,7 @@ every "recommended" label from
 before every run (a `BeforeAll` hook, a real `helm package`), so a
 "Local Archive Chart" scenario can never silently test stale content.
 
-## [`charts/test-dependency/`](https://github.com/alexanderilyin/Thomas/tree/main/charts/test-dependency)
+## [`charts/test-dependency/`](https://github.com/DeepSpaceCartel/thomas/tree/main/charts/test-dependency)
 
 Exists *solely* to declare a real dependency (on a small, public
 `metrics-server` repo) for exercising `helm dependency
@@ -39,7 +39,7 @@ build`/`list`/`update` — see
 Its `Chart.lock` and downloaded `charts/` subdirectory are real,
 regenerated artifacts (gitignored), not something to hand-edit.
 
-## [`charts/test-rest-api/`](https://github.com/alexanderilyin/Thomas/tree/main/charts/test-rest-api)
+## [`charts/test-rest-api/`](https://github.com/DeepSpaceCartel/thomas/tree/main/charts/test-rest-api)
 
 A real, deployed FastAPI application used by every
 [REST](../reference/REST.md) scenario. Notably built with **no custom
@@ -64,7 +64,7 @@ Adding a new endpoint here is a design decision of its own — see
 choices, the ConfigMap-glob mechanism, probe design) before changing
 this chart.
 
-## [`charts/test-tls-demo/`](https://github.com/alexanderilyin/Thomas/tree/main/charts/test-tls-demo)
+## [`charts/test-tls-demo/`](https://github.com/DeepSpaceCartel/thomas/tree/main/charts/test-tls-demo)
 
 A namespaced cert-manager `Issuer` (`spec.selfSigned: {}`) plus a
 `Certificate` requesting a real TLS Secret — used by [Kubernetes: TLS
