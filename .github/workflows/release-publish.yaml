@@ -1,16 +1,25 @@
 name: release-publish
 
-# Phase B of a release: runs on every push to main. If CHANGELOG.md's
-# topmost dated section doesn't have a matching git tag yet, that means
-# a release-prepare PR was just merged — tags HEAD and creates the
-# GitHub Release with notes from that CHANGELOG section. Otherwise
-# (a regular PR or version-bump-bot commit) it's a no-op. Detection is
-# merge-strategy-agnostic — it never parses commit messages, only
-# CHANGELOG.md/package.json content and tag existence. See
+# Phase B of a release: runs only when a real release-prepare PR
+# (branch release/vX.Y.Z) is actually merged into main — gated on the
+# PR event itself (merged == true + head branch name), not inferred
+# from repo file state. That inference was the original design and had
+# a real gap: the very first time this workflow ran on a repo whose
+# CHANGELOG.md/package.json already happened to describe an untagged
+# dated version (true here, from before this automation existed), it
+# published that release on an ordinary push with no PR/review
+# involved. Gating on the PR event itself closes that class of bug —
+# there is no repo file state that can accidentally look like "a
+# release PR was just merged" when one wasn't.
+#
+# CHANGELOG.md's/package.json's state is still cross-checked below
+# (defense in depth: if the branch name and the files ever disagree,
+# fail loudly rather than tag the wrong thing) — see
 # docs/project/releasing.md.
 
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches: [main]
 
 permissions:
@@ -22,41 +31,62 @@ concurrency:
 
 jobs:
   publish:
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
 
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - name: Detect pending release
+      - name: Determine expected version from the branch name
+        id: expected
+        run: |
+          branch="${{ github.event.pull_request.head.ref }}"
+          echo "version=${branch#release/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Cross-check CHANGELOG.md and package.json agree
         id: pending
-        run: node scripts/detect-pending-release.mjs
+        run: |
+          node scripts/detect-pending-release.mjs
+        # detect-pending-release.mjs already fails loudly if
+        # CHANGELOG.md's topmost dated section and package.json's
+        # version disagree with each other; this step's own output is
+        # compared against the branch name below.
+
+      - name: Verify the release branch and file state agree
+        run: |
+          if [ "${{ steps.pending.outputs.version }}" != "${{ steps.expected.outputs.version }}" ]; then
+            echo "Branch release/v${{ steps.expected.outputs.version }} merged, but CHANGELOG.md/package.json say ${{ steps.pending.outputs.version }} — refusing to guess which is right." >&2
+            exit 1
+          fi
 
       - name: Check whether it's already tagged
         id: tag
         run: |
-          tag="v${{ steps.pending.outputs.version }}"
+          tag="v${{ steps.expected.outputs.version }}"
           if git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: No pending release
+      - name: Already tagged
         if: steps.tag.outputs.exists == 'true'
-        run: echo "v${{ steps.pending.outputs.version }} is already tagged — nothing to publish."
+        run: echo "v${{ steps.expected.outputs.version }} is already tagged — nothing to publish (likely a re-run)."
 
       - name: Tag and publish release
         if: steps.tag.outputs.exists == 'false'
         run: |
-          tag="v${{ steps.pending.outputs.version }}"
+          tag="v${{ steps.expected.outputs.version }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag "$tag"
           git push origin "$tag"
-          node scripts/changelog-notes.mjs "${{ steps.pending.outputs.version }}" > /tmp/release-notes.md
+          node scripts/changelog-notes.mjs "${{ steps.expected.outputs.version }}" > /tmp/release-notes.md
           gh release create "$tag" --title "$tag" --notes-file /tmp/release-notes.md
         env:
           GH_TOKEN: ${{ github.token }}

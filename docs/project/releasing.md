@@ -41,8 +41,9 @@ automatic bump. Bump it by hand in that case (edit `package.json`'s
    new section's body as the PR description.
 5. **Review and merge that PR like any other.** Merging it is what
    actually publishes the release: `release-publish.yaml` (triggered by
-   the push to `main`) tags the merge commit `v0.2.0` and creates a
-   GitHub Release with notes taken directly from that CHANGELOG section.
+   that specific PR — branch `release/v0.2.0` — actually merging) tags
+   the merge commit `v0.2.0` and creates a GitHub Release with notes
+   taken directly from that CHANGELOG section.
 
 No further manual step — once the PR is merged, the tag and the GitHub
 Release both already exist.
@@ -72,14 +73,23 @@ placeholder. The very next merged PR continues the same counter
 |---|---|---|---|
 | `version-bump.yaml` | `pull_request` (same-repo) | `contents: write` | Bumps PATCH on the PR branch |
 | `release-prepare.yaml` | `workflow_dispatch` | `contents: write`, `pull-requests: write` | Computes the release version, rewrites the CHANGELOG, opens the release PR |
-| `release-publish.yaml` | `push` to `main` | `contents: write` | Tags + creates the GitHub Release, only if the CHANGELOG's topmost dated section isn't tagged yet |
+| `release-publish.yaml` | `pull_request` (`closed`), gated on `merged == true` and a `release/v*` head branch | `contents: write` | Tags + creates the GitHub Release |
 
-`release-publish.yaml` runs on **every** push to `main`, not just
-release merges — for a regular PR merge it detects the CHANGELOG's
-topmost version is already tagged and exits as a no-op. Detection never
-parses merge-commit messages (which vary by merge strategy), only file
-content and tag existence, so it works the same whether `main` uses
-merge commits, squash, or rebase merges.
+`release-publish.yaml` only runs when a PR whose branch matches
+`release/v*` is actually merged — it's gated on the PR event itself
+(`github.event.pull_request.merged == true`), not inferred from repo
+file state. That's a deliberate correction: an earlier version inferred
+"a release just merged" purely from "the CHANGELOG's topmost dated
+section isn't tagged yet," which meant *any* push to `main` that
+happened to leave the repo in that state — not just a real
+`release-prepare` PR merge — would auto-publish a release. That bit
+once, for real: the very first push of this automation to `main`
+auto-published `v0.1.0` with no PR/review involved, because
+`CHANGELOG.md`/`package.json` already described an untagged `0.1.0`
+from before the automation existed. The fix ties publishing to the PR
+event itself; the CHANGELOG/`package.json` state is still cross-checked
+against the branch name as defense in depth (fails loudly on
+disagreement, never guesses).
 
 ## Recommended: require branches to be up to date before merging
 
@@ -106,5 +116,7 @@ file with the same `--path` flags the workflows use:
   lives.
 - `changelog-notes.mjs <version>` — extracts one version's section body
   (the release PR's description, and `gh release create`'s notes).
-- `detect-pending-release.mjs` — the cross-check `release-publish.yaml`
-  uses to find which version (if any) needs tagging.
+- `detect-pending-release.mjs` — cross-checks `CHANGELOG.md`'s topmost
+  dated section against `package.json`'s version; `release-publish.yaml`
+  compares its output against the merged branch's own name and fails
+  loudly if they disagree.
