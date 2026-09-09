@@ -1,9 +1,59 @@
+import { defineParameterType } from '@cucumber/cucumber';
+
+// Every condition name this file understands - shared by the error message
+// below and the {condition} Cucumber parameter type (used by the oneline
+// condition steps in common.step.ts). Sorted longest-first when building
+// the regexp so a prefix condition (e.g. "gt") can never shadow a longer
+// one that starts the same way (e.g. "gte") - same shape as httpMethod's
+// custom parameter type in support/http/http_method.ts.
+export const CONDITIONS = ['equals', 'contains', 'icontains', 'undefined', 'exists', 'not_equals', 'gt', 'gte', 'lt', 'lte'] as const;
+
+// Symbol/plain-English spellings for the numeric/equality conditions -
+// real aliases, not a second vocabulary: normalized to their word form at
+// the top of check() below, so a table CONDITION cell and the oneline
+// {condition} parameter both accept any spelling of the same real check,
+// everywhere, for free. Word forms keep working unchanged. "is not" (a
+// two-word alias) works with zero extra logic because of the longest-
+// first sort below - confirmed directly against the real
+// @cucumber/cucumber-expressions matcher, not assumed: "is not" (6 chars)
+// is tried before "is" (2 chars), so it matches as one token instead of
+// leaking a stray " not" into the following {word}.
+const CONDITION_ALIASES: Record<string, (typeof CONDITIONS)[number]> = {
+  '>=': 'gte',
+  '<=': 'lte',
+  '==': 'equals',
+  '!=': 'not_equals',
+  '>': 'gt',
+  '<': 'lt',
+  '=': 'equals',
+  'is not': 'not_equals',
+  is: 'equals',
+};
+
+defineParameterType({
+  name: 'condition',
+  regexp: new RegExp([...CONDITIONS, ...Object.keys(CONDITION_ALIASES)].sort((a, b) => b.length - a.length).join('|')),
+  transformer: (s: string) => s,
+});
+
+// The only two conditions that genuinely ignore `expected` (see check()
+// below) - the real, narrow set a value-less oneline is allowed to
+// accept. Normalizes through the same real alias map first, so `is`
+// (not just `equals`) is correctly rejected here too.
+const VALUE_LESS_CONDITIONS = new Set(['exists', 'undefined']);
+
+export function requiresValue(rawCondition: string): boolean {
+  const condition = CONDITION_ALIASES[rawCondition] ?? rawCondition;
+  return !VALUE_LESS_CONDITIONS.has(condition);
+}
+
 interface CheckResult {
   pass: boolean;
   reason: string;
 }
 
-function check(actual: unknown, condition: string, expected: string): CheckResult {
+function check(actual: unknown, rawCondition: string, expected: string): CheckResult {
+  const condition = CONDITION_ALIASES[rawCondition] ?? rawCondition;
   const actualString = String(actual);
   switch (condition) {
     case 'undefined':
@@ -38,7 +88,7 @@ function check(actual: unknown, condition: string, expected: string): CheckResul
     default:
       return {
         pass: false,
-        reason: `unknown condition "${condition}" (known conditions: equals, contains, icontains, undefined, exists, not_equals, gt, gte, lt, lte)`,
+        reason: `unknown condition "${rawCondition}" (known conditions: ${CONDITIONS.join(', ')}, or symbols: ${Object.keys(CONDITION_ALIASES).join(', ')})`,
       };
   }
 }

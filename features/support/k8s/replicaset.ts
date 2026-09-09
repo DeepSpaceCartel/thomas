@@ -11,9 +11,10 @@ export type ReplicaSet = K8sObjectRef;
 // framework's open-ended label selector doesn't know to add). That means
 // discoverByLabels's "exactly one match" requirement genuinely fails
 // against any release that has been upgraded more than once (e.g.
-// `features/helm/release.feature`'s RollbackRelease, which upgrades
-// twice before rolling back) - only use this against a release installed
-// once and never upgraded/rolled back again.
+// `features/helm/release-short.feature`/`release-full.feature`'s
+// RollbackRelease, which upgrades twice before rolling back) - only use
+// this against a release installed once and never upgraded/rolled back
+// again.
 export function replicaSetFromTable(dataTable: DataTable): ReplicaSet {
   return discoverByLabels('replicaset', dataTable);
 }

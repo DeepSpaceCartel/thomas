@@ -1,15 +1,15 @@
 import fs from 'node:fs';
 import { DataTable } from '@cucumber/cucumber';
-import { isAliasReference } from '../aliases/alias_reference.js';
+import { isResourceReference } from '../resources/resource_reference.js';
 
 // The CHART_REF positional argument to `helm install/upgrade` covers six
 // forms (see `helm install --help`):
 //   1. chart reference        example/mariadb
 //   2. path to a packaged chart  ./nginx-1.2.3.tgz
 //   3. path to an unpacked chart directory  ./nginx
-//   4. absolute URL           https://example.com/charts/nginx-1.2.3.tgz
+//   4. absolute URL           https://example.com/charts/test-nginx-1.2.3.tgz
 //   5. chart reference + --repo   nginx (with repo: https://example.com/charts/)
-//   6. OCI registry ref       oci://example.com/charts/nginx
+//   6. OCI registry ref       oci://example.com/charts/test-nginx
 // A bare relative path (no scheme, no leading "./") is syntactically
 // identical to form 1's "repo/name" shape - the real `helm` binary
 // disambiguates by checking the filesystem, which a pure classifier
@@ -85,23 +85,33 @@ export class HelmChart {
   }
 }
 
-// `resolveAlias` is a plain callback, not `World` itself - this module has
-// zero dependency on world.ts (which already imports HelmChart for its
+// `resolveResource` is a plain callback, not `World` itself - this module
+// has zero dependency on world.ts (which already imports HelmChart for its
 // `charts` map type), so taking World directly here would create a
 // circular import. The step definition builds the closure since it's the
 // one with `this: World`. Both `chart` (a location: directory/file/url/oci)
 // and `repo` (always a url) can be written as an "<Alias>" instead of a
 // raw literal.
-export function helmChartFromTable(dataTable: DataTable, resolveAlias: (alias: string) => string | undefined): HelmChart {
-  const fields = Object.fromEntries(dataTable.hashes().map(({ PROPERTY, VALUE }) => [PROPERTY, VALUE]));
+//
+// Shared by the table-form `Given` (builds `fields` from a DataTable) and
+// the oneline `Given ... with chart/repo/version ...` steps (build
+// `fields` directly, no table) - one real implementation of "turn field
+// values into a HelmChart", not two.
+export function helmChartFromFields(fields: Record<string, string>, resolveResource: (alias: string) => string | undefined): HelmChart {
+  const resolved = { ...fields };
   for (const key of ['chart', 'repo'] as const) {
-    if (fields[key] && isAliasReference(fields[key])) {
-      const resolved = resolveAlias(fields[key]);
-      if (resolved === undefined) {
-        throw new Error(`No Alias registered as "${fields[key]}"`);
+    if (resolved[key] && isResourceReference(resolved[key])) {
+      const value = resolveResource(resolved[key]);
+      if (value === undefined) {
+        throw new Error(`No Resource registered as "${resolved[key]}"`);
       }
-      fields[key] = resolved;
+      resolved[key] = value;
     }
   }
-  return new HelmChart(fields);
+  return new HelmChart(resolved);
+}
+
+export function helmChartFromTable(dataTable: DataTable, resolveResource: (alias: string) => string | undefined): HelmChart {
+  const fields = Object.fromEntries(dataTable.hashes().map(({ PROPERTY, VALUE }) => [PROPERTY, VALUE]));
+  return helmChartFromFields(fields, resolveResource);
 }

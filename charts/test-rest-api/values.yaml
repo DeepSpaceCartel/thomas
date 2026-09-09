@@ -1,0 +1,66 @@
+replicaCount: 1
+
+image:
+  repository: python
+  tag: "3.12-slim"
+  pullPolicy: IfNotPresent
+
+# Pinned real, current (as of authoring) PyPI versions - installed at pod
+# startup, not baked into a custom image (see Chart.yaml). Pinning still
+# matters even without a custom image: it keeps repeated pod restarts
+# deterministic instead of silently drifting to whatever "latest" happens
+# to be on a given day.
+pipVersions:
+  fastapi: "0.141.1"
+  uvicorn: "0.52.4"
+  pythonMultipart: "0.0.32"
+  bcrypt: "4.3.0"
+  cryptography: "45.0.7"
+  pythonJose: "3.5.0"
+
+service:
+  port: 8000
+
+# Off by default - zero risk to every scenario already depending on this
+# chart's exact current shape. When enabled, a second real uvicorn
+# process terminates real TLS on tls.port using a self-signed
+# cert-manager Certificate (see templates/tls-issuer.yaml /
+# tls-certificate.yaml), alongside the existing plain-HTTP listener
+# (unchanged - still what the k8s probes use).
+#
+# dnsName left unset by default - templates/tls-certificate.yaml
+# defaults it to this release's own real in-cluster Service DNS name
+# (<fullname>.<namespace>.svc.cluster.local), set as the Certificate's
+# `dnsNames` (not `commonName` - that real FQDN routinely exceeds
+# X.509's hard 64-byte CommonName limit, confirmed live via
+# cert-manager's own admission webhook rejecting it). That match matters
+# for real reasons: a client verifying this cert checks the real
+# hostname it connected to against SAN/dnsNames, so a cert issued for
+# any other name (e.g. a fixed, namespace-agnostic default) would fail
+# real TLS hostname verification - confirmed live, a first pass at this
+# used a static default and every real HTTPS request failed with
+# exactly that.
+tls:
+  enabled: false
+  port: 8443
+  dnsName: ""
+
+# startupProbe's budget must absorb a real, uncached `pip install` over
+# the network - calibrated from actually observed pod startup time, not
+# guessed (see the chart's README).
+probes:
+  startup:
+    periodSeconds: 3
+    failureThreshold: 40
+  readiness:
+    periodSeconds: 3
+  liveness:
+    periodSeconds: 10
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi

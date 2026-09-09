@@ -1,0 +1,62 @@
+name: release-publish
+
+# Phase B of a release: runs on every push to main. If CHANGELOG.md's
+# topmost dated section doesn't have a matching git tag yet, that means
+# a release-prepare PR was just merged — tags HEAD and creates the
+# GitHub Release with notes from that CHANGELOG section. Otherwise
+# (a regular PR or version-bump-bot commit) it's a no-op. Detection is
+# merge-strategy-agnostic — it never parses commit messages, only
+# CHANGELOG.md/package.json content and tag existence. See
+# docs/project/releasing.md.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Detect pending release
+        id: pending
+        run: node scripts/detect-pending-release.mjs
+
+      - name: Check whether it's already tagged
+        id: tag
+        run: |
+          tag="v${{ steps.pending.outputs.version }}"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: No pending release
+        if: steps.tag.outputs.exists == 'true'
+        run: echo "v${{ steps.pending.outputs.version }} is already tagged — nothing to publish."
+
+      - name: Tag and publish release
+        if: steps.tag.outputs.exists == 'false'
+        run: |
+          tag="v${{ steps.pending.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "$tag"
+          git push origin "$tag"
+          node scripts/changelog-notes.mjs "${{ steps.pending.outputs.version }}" > /tmp/release-notes.md
+          gh release create "$tag" --title "$tag" --notes-file /tmp/release-notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}

@@ -1,0 +1,52 @@
+name: Bug report
+description: Something in Thomas itself doesn't behave as documented — a step definition, a fixture chart, the docs site, or the release automation.
+labels: [bug]
+body:
+  - type: dropdown
+    id: domain
+    attributes:
+      label: Domain
+      description: Which part of Thomas is this about?
+      options:
+        - Helm steps
+        - Kubernetes steps
+        - REST steps
+        - Fixture charts (charts/)
+        - Documentation site (docs/)
+        - Release automation (.github/workflows, scripts/)
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you run, and what did it actually do? If this is about a `.feature` scenario or step definition, name the real file (e.g. `features/rest/notes-short.feature`).
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce it
+      description: The real command(s) that trigger this — `npm test`, `npm test -- --name "..."`, a specific `.feature` file, a `helm`/`kubectl` command, etc.
+      render: shell
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: helm/kubectl/node version, and what kind of cluster (kind, a managed cloud cluster, etc.) — only relevant for scenarios that touch a real cluster.
+      placeholder: |
+        helm version: v3.x
+        kubectl version: v1.x
+        node version: v20.x
+        cluster: kind / EKS / GKE / ...

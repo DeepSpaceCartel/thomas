@@ -1,0 +1,13 @@
+{{- if .Values.tls.enabled }}
+# Same real, disposable cert-manager `selfSigned` Issuer pattern as
+# charts/test-tls-demo/templates/issuer.yaml - see that file's comment
+# for why selfSigned (not this cluster's real production ClusterIssuer).
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ include "test-rest-api.fullname" . }}-tls
+  labels:
+    {{- include "test-rest-api.labels" . | nindent 4 }}
+spec:
+  selfSigned: {}
+{{- end }}

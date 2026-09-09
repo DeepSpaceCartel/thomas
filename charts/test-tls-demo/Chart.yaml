@@ -1,0 +1,12 @@
+apiVersion: v2
+name: test-tls-demo
+description: >-
+  Minimal chart whose only purpose is issuing a real cert-manager
+  certificate for exercising TLS/certificate inspection steps against a
+  real Kubernetes TLS Secret. Uses cert-manager's own `selfSigned` Issuer
+  type deliberately - no ACME/DNS-01 challenge, no external dependency,
+  no shared rate limit, near-instant issuance. Not deployed anywhere real -
+  no Deployment/Service of its own.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

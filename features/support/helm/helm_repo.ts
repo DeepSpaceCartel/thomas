@@ -1,5 +1,5 @@
 import { DataTable } from '@cucumber/cucumber';
-import { isAliasReference } from '../aliases/alias_reference.js';
+import { isResourceReference } from '../resources/resource_reference.js';
 
 const KNOWN_FIELDS = ['name', 'url'] as const;
 
@@ -28,18 +28,26 @@ export class HelmRepo {
   }
 }
 
-// Same alias-resolution shape as HelmChart's helmChartFromTable, and the
+// Same resource-resolution shape as HelmChart's helmChartFromFields, and the
 // same reason this takes a plain callback instead of World directly:
 // world.ts imports HelmRepo for its `repos` map type, so importing World
 // back into this module would be circular.
-export function helmRepoFromTable(dataTable: DataTable, resolveAlias: (alias: string) => string | undefined): HelmRepo {
-  const fields = Object.fromEntries(dataTable.hashes().map(({ PROPERTY, VALUE }) => [PROPERTY, VALUE]));
-  if (fields.url && isAliasReference(fields.url)) {
-    const resolved = resolveAlias(fields.url);
-    if (resolved === undefined) {
-      throw new Error(`No Alias registered as "${fields.url}"`);
+//
+// Shared by the table-form `Given` and the oneline `Given ... named ...
+// at ...` step - one implementation, not two.
+export function helmRepoFromFields(fields: Record<string, string>, resolveResource: (alias: string) => string | undefined): HelmRepo {
+  const resolved = { ...fields };
+  if (resolved.url && isResourceReference(resolved.url)) {
+    const value = resolveResource(resolved.url);
+    if (value === undefined) {
+      throw new Error(`No Resource registered as "${resolved.url}"`);
     }
-    fields.url = resolved;
+    resolved.url = value;
   }
-  return new HelmRepo(fields);
+  return new HelmRepo(resolved);
+}
+
+export function helmRepoFromTable(dataTable: DataTable, resolveResource: (alias: string) => string | undefined): HelmRepo {
+  const fields = Object.fromEntries(dataTable.hashes().map(({ PROPERTY, VALUE }) => [PROPERTY, VALUE]));
+  return helmRepoFromFields(fields, resolveResource);
 }

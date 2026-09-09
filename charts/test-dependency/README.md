@@ -4,4 +4,4 @@ Minimal chart whose only purpose is declaring a real dependency (a
 small, public `metrics-server` repo), for exercising `helm dependency
 build/list/update` against real chart-dependency resolution. Not
 deployed anywhere - no templates of its own. See
-`Thomas/features/helm/dependency.feature`.
+`Thomas/features/helm/dependency-{short,full}.feature`.

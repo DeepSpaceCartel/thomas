@@ -1,4 +1,4 @@
-site_name: Thomas BDD Harness
+site_name: Thomas | Trust but Verify
 site_description: Real-command BDD testing for Helm, Kubernetes, and HTTP services.
 site_url: https://alexanderilyin.github.io/Thomas/
 repo_url: https://github.com/alexanderilyin/Thomas
@@ -8,18 +8,19 @@ edit_uri: edit/main/docs/
 nav:
   - Home: index.md
   - Concepts:
-      - Getting started: getting-started.md
-      - Architecture: architecture.md
-      - BDD conventions: bdd-conventions.md
+      - Installing Thomas: concepts/installing.md
+      - Architecture: concepts/architecture.md
+      - BDD conventions: concepts/bdd-conventions.md
   - Reference:
-      - Aliases: ALIASES.md
-      - Helm: HELM.md
-      - Kubernetes: KUBECTL.md
-      - REST: REST.md
+      - Resources: reference/RESOURCES.md
+      - Helm: reference/HELM.md
+      - Kubernetes: reference/KUBECTL.md
+      - REST: reference/REST.md
   - Project:
-      - Fixtures and charts: fixtures.md
-      - Installing Thomas: installing.md
-      - Development: development.md
+      - Getting started: project/getting-started.md
+      - Fixtures and charts: project/fixtures.md
+      - Development: project/development.md
+      - Releasing: project/releasing.md
 
 theme:
   name: material

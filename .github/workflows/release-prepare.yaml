@@ -1,0 +1,84 @@
+name: release-prepare
+
+# Phase A of a release: computes the version this release ships as (a
+# MINOR bump with PATCH reset relative to package.json's current
+# version), moves CHANGELOG.md's [Unreleased] section into a new dated
+# section for that version, and opens a PR with both changes for human
+# review. Merging that PR is what actually tags + creates the GitHub
+# Release, via release-publish.yaml. See docs/project/releasing.md.
+#
+# Fails loudly (before any branch/PR exists) if [Unreleased] is empty —
+# the guard against an accidental content-free release.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-prepare
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Compute release version
+        id: version
+        run: node scripts/compute-release-version.mjs
+
+      - name: Check for an existing release-prep branch
+        id: existing
+        run: |
+          branch="release/v${{ steps.version.outputs.version }}"
+          if git ls-remote --exit-code --heads origin "$branch" > /dev/null 2>&1; then
+            echo "Branch $branch already exists — a release-prepare run already handled v${{ steps.version.outputs.version }}."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply version bump
+        if: steps.existing.outputs.exists == 'false'
+        run: node scripts/compute-release-version.mjs --write
+
+      - name: Update CHANGELOG.md
+        if: steps.existing.outputs.exists == 'false'
+        run: |
+          node scripts/update-changelog-release.mjs \
+            "${{ steps.version.outputs.version }}" \
+            "$(date -u +%Y-%m-%d)" \
+            "${{ github.server_url }}/${{ github.repository }}"
+
+      - name: Create release branch and push
+        if: steps.existing.outputs.exists == 'false'
+        run: |
+          branch="release/v${{ steps.version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add package.json CHANGELOG.md
+          git commit -m "chore(release): prepare v${{ steps.version.outputs.version }}"
+          git push origin "$branch"
+
+      - name: Open release PR
+        if: steps.existing.outputs.exists == 'false'
+        run: |
+          node scripts/changelog-notes.mjs "${{ steps.version.outputs.version }}" > /tmp/release-notes.md
+          gh pr create \
+            --base main \
+            --head "release/v${{ steps.version.outputs.version }}" \
+            --title "Release v${{ steps.version.outputs.version }}" \
+            --body-file /tmp/release-notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}

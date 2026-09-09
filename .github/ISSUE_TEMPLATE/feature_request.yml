@@ -1,0 +1,35 @@
+name: Feature request
+description: A new step, table shape, fixture, or capability you'd want Thomas to support.
+labels: [enhancement]
+body:
+  - type: dropdown
+    id: domain
+    attributes:
+      label: Domain
+      description: Which part of Thomas would this extend?
+      options:
+        - Helm steps
+        - Kubernetes steps
+        - REST steps
+        - A new domain entirely
+        - Fixture charts (charts/)
+        - Documentation site (docs/)
+        - Release automation (.github/workflows, scripts/)
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: What real scenario needs this
+      description: What are you trying to test or express in a `.feature` file that isn't possible today? A concrete example scenario (even a rough one) is more useful than an abstract description.
+    validations:
+      required: true
+
+  - type: textarea
+    id: shape
+    attributes:
+      label: Proposed shape (optional)
+      description: If you have one in mind — a step wording, a table vocabulary, a short/full form pair — sketch it here. See `.agents/skills/thomas/references/extending.md` for the conventions new steps follow.
+      render: gherkin

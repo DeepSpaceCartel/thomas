@@ -4,11 +4,11 @@ import { HelmChart } from './helm_chart.js';
 const KNOWN_FIELDS = ['chart', 'name', 'namespace'] as const;
 
 export class HelmRelease {
-  // NOT a string alias like Directory/File/URL/OCIArtifact - a real
+  // NOT a string resource like Directory/File/URL/OCIArtifact - a real
   // HelmChart object. Its CLI representation depends on chart.kind (local
   // path vs URL vs OCI vs reference+repo), so HelmRelease needs the object
   // itself, resolved via a dedicated (alias) => HelmChart callback, not
-  // the string-only resolveAlias used everywhere else.
+  // the string-only resolveResource used everywhere else.
   readonly chart: HelmChart;
   readonly name: string;
   readonly namespace: string;
@@ -31,8 +31,9 @@ export class HelmRelease {
   }
 }
 
-export function helmReleaseFromTable(dataTable: DataTable, resolveChart: (alias: string) => HelmChart | undefined): HelmRelease {
-  const fields = Object.fromEntries(dataTable.hashes().map(({ PROPERTY, VALUE }) => [PROPERTY, VALUE]));
+// Shared by the table-form `Given` and the oneline `Given ... with chart
+// ... name ... namespace ...` step - one implementation, not two.
+export function helmReleaseFromFields(fields: Record<string, string>, resolveChart: (alias: string) => HelmChart | undefined): HelmRelease {
   if (!fields.chart) {
     throw new Error('HelmRelease requires a "chart" field');
   }
@@ -41,4 +42,9 @@ export function helmReleaseFromTable(dataTable: DataTable, resolveChart: (alias:
     throw new Error(`No HelmChart registered as "${fields.chart}"`);
   }
   return new HelmRelease(fields, chart);
+}
+
+export function helmReleaseFromTable(dataTable: DataTable, resolveChart: (alias: string) => HelmChart | undefined): HelmRelease {
+  const fields = Object.fromEntries(dataTable.hashes().map(({ PROPERTY, VALUE }) => [PROPERTY, VALUE]));
+  return helmReleaseFromFields(fields, resolveChart);
 }

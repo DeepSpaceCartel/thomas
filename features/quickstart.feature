@@ -1,54 +1,30 @@
-Feature: Quick Start - the shape of a scenario a consuming project writes
-  As a developer evaluating Thomas
-  I want one scenario that deploys a chart from a local folder, verifies
-  it in Kubernetes, then makes a real REST check against it
-  So that I can see the full Helm -> Kubernetes -> REST flow in one place
-  before reading the per-tool references
+Feature: Deploy and Test a Service
+  As a full-stack developer
+  I want to deploy a service and check that it is working
+  So that I can see a complete service deployment and verification flow
 
-  # Uses this repo's own charts/nginx fixture as a stand-in for "your
-  # chart" - every alias/step here is real and proven elsewhere in this
-  # suite; this scenario exists specifically to back docs/index.md's
-  # Quick Start section with a real, passing example.
   Scenario: Deploy a chart from a folder, verify it in k8s, then check it over REST
-    Given Directory known as "<MyChartDirectory>":
-      | PROPERTY | VALUE          |
-      | path     | ./charts/nginx |
-    And Helm Chart known as "<MyHelmChart>":
-      | PROPERTY | VALUE               |
-      | chart    | <MyChartDirectory> |
-    And HelmRelease known as "<MyRelease>":
-      | PROPERTY  | VALUE             |
-      | chart     | <MyHelmChart>     |
-      | name      | sandbox-quickstart |
-      | namespace | thomas-helm-test  |
-    When I upgrade HelmRelease known as "<MyRelease>" with:
-      | OPTION             | VALUE |
-      | --install          | True  |
-      | --atomic           | True  |
-      | --create-namespace | True  |
-    Then the command exited with 0
+    Given Helm Chart "<NginxHelmChart>" in "./charts/test-nginx"
+    And Helm Release "<NginxRelease>" of "<NginxHelmChart>" named "nginx-release" in "dev"
+    When I upgrade Helm Release "<NginxRelease>" with --install --atomic --create-namespace
+    Then the command succeeds
+    When I get status of Helm Release "<NginxRelease>" as YAML
+    Then Helm Release "<NginxRelease>" is "deployed"
 
-    Given Deployment known as "<MyDeployment>":
-      | PROPERTY                   | VALUE               |
-      | namespace                  | thomas-helm-test    |
-      | app.kubernetes.io/instance | sandbox-quickstart  |
-    When I get Deployment known as "<MyDeployment>" with:
-      | OPTION   | VALUE |
-      | --output | json  |
-    Then the command result data has:
-      | KEY                  | CONDITION | VALUE |
-      | status.readyReplicas | gte       | 1     |
+    Given Deployment "<NginxDeployment>"
+    And "<NginxDeployment>" namespace is "dev"
+    And "<NginxDeployment>" label "app.kubernetes.io/instance" is "nginx-release"
+    When I get Deployment "<NginxDeployment>" as JSON
+    Then Deployment "<NginxDeployment>" has "status.readyReplicas" >= 1
 
-    Given Service known as "<MyService>":
-      | PROPERTY                   | VALUE              |
-      | namespace                  | thomas-helm-test   |
-      | app.kubernetes.io/instance | sandbox-quickstart |
-    And RestEndpoint known as "<MyApi>":
-      | PROPERTY | VALUE       |
-      | service  | <MyService> |
-      | port     | 80          |
-    When I send a GET request to RestEndpoint known as "<MyApi>" path "/"
+    Given Service "<NginxService>"
+    And "<NginxService>" namespace is "dev"
+    And "<NginxService>" label "app.kubernetes.io/instance" is "nginx-release"
+    When I get Service "<NginxService>" as JSON
+    Then Service "<NginxService>" has "spec.type" == ClusterIP
+    And HTTP Endpoint "<NginxApi>" on "<NginxService>" port "80"
+    When I send a GET request to Endpoint known as "<NginxApi>" path "/"
     Then the response status is 200
 
-    When I uninstall HelmRelease known as "<MyRelease>"
-    Then the command exited with 0
+    When I uninstall Helm Release known as "<NginxRelease>"
+    Then the command exited with 0 STDOUT contains uninstalled

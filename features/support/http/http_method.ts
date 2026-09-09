@@ -1,7 +1,7 @@
 import { defineParameterType } from '@cucumber/cucumber';
 
 // The real, currently-exercised HTTP method set - every endpoint under
-// charts/rest-api/files/*.py and every "I send a <X> request" call site
+// charts/test-rest-api/files/*.py and every "I send a <X> request" call site
 // in features/rest/*.feature uses exactly one of these. Registered here
 // (rather than added to only http.step.ts) so cucumber.mjs's
 // `features/support/**/*.ts` import - which runs before

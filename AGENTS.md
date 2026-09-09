@@ -64,56 +64,74 @@ same way):
   (`HelmChart`, `Service`), not a string, because their real CLI/URL
   representation depends on structure a plain string would have already
   lost.
-- `Deployment`/`Service`/`Pod`'s `Given` performs a real, read-only
-  `kubectl get` — justified as the same category as `Directory`'s real
-  `fs.existsSync` check, not a new kind of exception.
+- `Deployment`/`Service`/`Pod`/`ConfigMap`/`ReplicaSet`/`Secret`'s `Given`
+  performs a real, read-only `kubectl get` — justified as the same
+  category as `Directory`'s real `fs.existsSync` check, not a new kind
+  of exception. `Secret` is the one variant that retries briefly: it can
+  be created by a controller (cert-manager) reacting to another
+  resource, asynchronously and outside Helm's own `--atomic` wait, so a
+  single immediate `kubectl get` can genuinely race it — see
+  `features/support/k8s/secret.ts`.
 - `RestEndpoint`'s `Given` stays pure (no live check) — there's no cheap
   read-only analog to "is this URL reachable," so the first real
   validation is the paired `When`.
 
-For using existing steps in a `.feature` file, see
-**`.agents/skills/thomas-bdd-testing/`** — read it before writing any
-new `.feature` file. For the full alias/DataTable methodology (all 6
-table vocabularies, JMESPath `KEY` queries, the capture/embedded-
-substitution mechanism, generic `Then` reuse, and how to add a new alias
-type or table shape) see **`.agents/skills/extend-thomas/`**.
+For using existing steps in a `.feature` file, or the full alias/
+DataTable methodology (all 6 table vocabularies plus their oneline/short
+companions, JMESPath `KEY` queries, the capture/embedded-substitution
+mechanism, generic `Then` reuse, and how to add a new alias type or
+table shape), see **`.agents/skills/thomas/`** — read it before writing
+any new `.feature` file, or before changing Thomas itself.
 
 ## Layout
 
 ```
 features/
-  helm/    real `helm` behavior (chart, repo, directory, release)
-  k8s/     real `kubectl` behavior (Deployment/Service/Pod discovery, polling)
-  rest/    real HTTP behavior against the rest-api fixture app
-  aliases/ alias-construction validation (the negative-path "Given ... has no field X" tests)
-  fixtures/  real files used by upload/download scenarios (features/rest/files.feature)
-  step_definitions/  one file per domain (directory/helm/helm-repo/helm-release/kubernetes/http/common)
+  helm/      real `helm` behavior (chart, repo, directory, release) — also holds
+             helm-repo-validation.feature/helm-release-validation.feature
+             (the object-resolving exceptions' negative-path tests)
+  k8s/       real `kubectl` behavior (Deployment/Service/Pod/Secret discovery,
+             polling, exec, RBAC, TLS certificate inspection)
+  rest/      real HTTP behavior against the rest-api fixture app
+  resources/ resource-construction validation (the negative-path "Given ... has
+             no field X" tests for Directory/File/URL/OCIArtifact)
+  fixtures/  real files used by upload/download scenarios (features/rest/files-{short,full}.feature)
+  step_definitions/  mirrors support/'s domain split (resources/, helm/, k8s/, http/),
+                     plus common.step.ts at the top level (type-agnostic)
   support/
-    aliases/  Directory, File, URL, OCIArtifact + resolve_alias.ts
-    helm/     HelmChart, HelmRepo, HelmRelease, chart_ref_args, real chart-fetch logic
-    k8s/      Deployment, Service, Pod + discover.ts (shared label-selector logic)
-    http/     RestEndpoint, http_request.ts (real fetch()), capture.ts (dynamic values)
+    resources/  Directory, File, URL, OCIArtifact + resolve_resource.ts
+    helm/       HelmChart, HelmRepo, HelmRelease, chart_ref_args, real chart-fetch logic
+    k8s/        Deployment, Service, Pod, ConfigMap, ReplicaSet, Secret + discover.ts
+                (shared label-selector logic)
+    http/       RestEndpoint, http_request.ts (real fetch()), capture.ts (dynamic values)
     (top level)  generic infra: assert_condition.ts, query.ts (JMESPath), run_command.ts,
                  poll.ts, attempt.ts, hooks.ts, world.ts
 charts/
-  nginx/         minimal off-the-shelf-image fixture (Deployment/Service/test-hook Pod)
-  test-dependency/  exists solely to exercise `helm dependency build/list/update`
-  rest-api/      real FastAPI test fixture — see .agents/skills/fastapi-test-fixture/
+  test-nginx/         minimal off-the-shelf-image fixture (Deployment/Service/test-hook Pod)
+  test-dependency/    exists solely to exercise `helm dependency build/list/update`
+  test-rest-api/      real FastAPI test fixture — see charts/test-rest-api/README.md
+  test-tls-demo/      self-signed cert-manager Issuer+Certificate fixture — see
+                      features/k8s/tls-{short,full}.feature and docs/reference/KUBECTL.md#tls-certificates
 ```
 
 ## Domain skills (read the relevant one before working in that area)
 
-- **`.agents/skills/thomas-bdd-testing/`** — the usage-facing skill:
-  `SKILL.md` is the index, with `helm/`, `kubectl/`, `rest/` subfolders
-  each holding that tool's step catalog and real scenario excerpts. Read
-  first, always, before writing a `.feature` file against existing steps.
-- **`.agents/skills/extend-thomas/`** — the core Alias/DataTable
-  methodology and how to add a new alias type, step, or table shape to
-  Thomas itself. Read this instead when you're changing Thomas, not
-  just using it.
-- **`.agents/skills/fastapi-test-fixture/`** — how and why
-  `charts/rest-api` is built the way it is (no custom image, health
-  probes, in-memory/on-disk storage).
+- **`.agents/skills/thomas/`** — `SKILL.md` is the index; `references/`
+  holds `using-steps.md`/`helm.md`/`kubectl.md`/`rest.md` (the
+  usage-facing step catalogs, read first before writing a `.feature`
+  file) and `extending.md` (the core Alias/DataTable methodology, read
+  instead when changing Thomas itself, not just using it).
+- **`charts/test-rest-api/README.md`** — how and why that fixture app is
+  built the way it is (no custom image, health probes, in-memory/on-disk
+  storage). Read before adding an endpoint or changing a health probe.
+
+Five more skills under `.agents/skills/` are general-purpose, not
+Thomas-specific — read the relevant one when the task at hand matches,
+regardless of which project you're in: `keepachangelog/` (writing a
+`CHANGELOG.md`), `semver/` (version numbers), `conventionalcommits/`
+(commit message format), `adr/` (recording an architectural decision),
+`docs/` (the Divio tutorial/how-to/reference/explanation framework —
+what this repo's own `docs/` layout follows).
 
 ## Real-command discipline (non-negotiable, don't relax these)
 
@@ -171,14 +189,21 @@ charts/
 ## Status
 
 - **Phase 1** (health-probe endpoints, `RestEndpoint`/HTTP mechanism,
-  `charts/rest-api` skeleton) — shipped, verified.
+  `charts/test-rest-api` skeleton) — shipped, verified.
 - **Phase 2** (`/files/*`, `/notes/*` CRUD, dynamic-value capture,
   multipart upload, binary-safe response bodies) — shipped, verified
   (66/66 scenarios, twice in a row, cluster confirmed clean both times).
 - **Phase 3** (`/users/*` + 5 real auth methods — ApiKey/Basic/Bearer/
   self-hosted OAuth2/OIDC) — implemented and covered by real scenarios in
-  `features/rest/users.feature` and `features/rest/auth.feature`; rerun the
+  `features/rest/users-{short,full}.feature` and `features/rest/auth-{short,full}.feature`; rerun the
   full suite twice before calling it verified. Full plan at
   `docs/claude/plans/0001-phase3-users-and-auth.md`. Two small,
   independent, not-yet-closed test-coverage gaps are tracked at
   `docs/claude/plans/0002-test-coverage-gaps.md`.
+- **Phase 4** ("Aliases" → "Resources" rename across code/docs, oneline
+  construction steps for every fixed-field type, `HelmRelease`/
+  `OCIArtifact`/`RestEndpoint` step-text spacing fixes, and three new
+  real capabilities — `kubectl exec`, `kubectl auth can-i` (RBAC), and
+  cert-manager TLS certificate inspection via a self-signed fixture
+  chart) — shipped, verified (71/71 scenarios, cluster confirmed clean
+  after a real run).

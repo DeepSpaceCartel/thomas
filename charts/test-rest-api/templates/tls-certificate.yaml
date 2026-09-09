@@ -1,0 +1,32 @@
+{{- if .Values.tls.enabled }}
+{{- $dnsName := .Values.tls.dnsName | default (printf "%s.%s.svc.cluster.local" (include "test-rest-api.fullname" .) .Release.Namespace) }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "test-rest-api.fullname" . }}-tls
+  labels:
+    {{- include "test-rest-api.labels" . | nindent 4 }}
+spec:
+  secretName: {{ include "test-rest-api.fullname" . }}-tls
+  # secretTemplate.labels - same real reason as test-tls-demo's
+  # Certificate: cert-manager does not copy the Certificate's own labels
+  # onto the Secret it writes, so this is what makes the Secret
+  # discoverable via the existing label-selector Secret kind.
+  secretTemplate:
+    labels:
+      {{- include "test-rest-api.labels" . | nindent 6 }}
+  # dnsNames only, no commonName: a real in-cluster Service FQDN
+  # (<fullname>.<namespace>.svc.cluster.local) routinely exceeds X.509's
+  # hard 64-byte CommonName limit (confirmed live - cert-manager's
+  # admission webhook rejects it: "spec.commonName: Too long"), and
+  # modern TLS clients (this project's `undici` Agent included) verify
+  # the hostname against SAN/dnsNames, never CommonName, so dropping it
+  # loses nothing real. Defaults to this release's real in-cluster
+  # Service DNS name - the exact hostname RestEndpoint's baseUrl
+  # connects to - so real TLS hostname verification actually passes.
+  dnsNames:
+    - {{ $dnsName | quote }}
+  issuerRef:
+    name: {{ include "test-rest-api.fullname" . }}-tls
+    kind: Issuer
+{{- end }}

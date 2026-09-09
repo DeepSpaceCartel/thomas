@@ -1,0 +1,60 @@
+name: version-bump
+
+# Bumps package.json's PATCH version by 1 on every same-repo PR, as a
+# commit pushed onto the PR's own branch — so the bump is part of the
+# normal reviewable diff, not a separate main-branch commit. See
+# docs/project/releasing.md for the full versioning model.
+#
+# Known limitation: GITHUB_TOKEN can't push to a fork's branch under
+# plain `pull_request`, so this only bumps same-repo PRs. Accepted, not
+# solved here.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: version-bump-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  bump:
+    # release-prepare.yaml always branches as release/vX.Y.Z and bumps
+    # MINOR itself — never add a patch bump on top of that.
+    if: ${{ !startsWith(github.head_ref, 'release/v') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Bump patch version if needed
+        id: bump
+        run: |
+          git fetch origin main
+          main_version=$(git show origin/main:package.json | node -e '
+            const fs = require("fs");
+            const text = fs.readFileSync(0, "utf8");
+            const match = /"version"\s*:\s*"([^"]+)"/.exec(text);
+            if (!match) throw new Error("no version field on main");
+            process.stdout.write(match[1]);
+          ')
+          node scripts/bump-patch-version.mjs --main-version "$main_version" --write
+
+      - name: Commit and push bump
+        if: steps.bump.outputs.bumped == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json
+          git commit -m "chore: bump version to ${{ steps.bump.outputs.version }}"
+          git push origin "HEAD:${{ github.head_ref }}"

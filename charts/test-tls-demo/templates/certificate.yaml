@@ -1,0 +1,21 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "test-tls-demo.fullname" . }}
+  labels:
+    {{- include "test-tls-demo.labels" . | nindent 4 }}
+spec:
+  secretName: {{ include "test-tls-demo.fullname" . }}-tls
+  # secretTemplate.labels is what makes the real Secret cert-manager
+  # writes discoverable the same way as every other real object in this
+  # suite (label selector, via `discoverByLabels`) - cert-manager does
+  # NOT copy the Certificate's own labels onto the Secret automatically.
+  secretTemplate:
+    labels:
+      {{- include "test-tls-demo.labels" . | nindent 6 }}
+  commonName: {{ .Values.commonName | quote }}
+  dnsNames:
+    - {{ .Values.commonName | quote }}
+  issuerRef:
+    name: {{ include "test-tls-demo.fullname" . }}
+    kind: Issuer
