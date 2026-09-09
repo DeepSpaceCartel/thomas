@@ -37,7 +37,8 @@ Feature: BDD Framework for the rest-api fixture's Users CRUD
     Then the command result data has:
       | KEY             | CONDITION | VALUE          |
       | username        | equals    | lifecycle-user |
-      | password_hash   | undefined |              |
+      | username        | exists    |                |
+      | password_hash   | undefined |                |
 
     Given the value at "id" from the last response is known as "<UserId>"
     Given the value at "api_key" from the last response is known as "<ApiKey>"
@@ -70,6 +71,5 @@ Feature: BDD Framework for the rest-api fixture's Users CRUD
     When I send a GET request to RestEndpoint known as "<UsersApi>" path "/users/<UserId>"
     Then the response status is 404
 
-    When I uninstall HelmRelease known as "<UsersRelease>" with:
-      | OPTION | VALUE |
+    When I uninstall HelmRelease known as "<UsersRelease>"
     Then the command exited with 0

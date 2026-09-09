@@ -59,11 +59,11 @@ Feature: BDD Framework for Helm Charts
       | PROPERTY | VALUE            |
       | name     | bitnami          |
       | url      | <BitnamiRepoUrl> |
-    When I add Helm Repo known as "<BitnamiHelmRepo>" with:
-      | OPTION | VALUE |
+    When I add Helm Repo known as "<BitnamiHelmRepo>"
     And Helm Chart known as "<ReferenceNginxHelmChart>":
       | PROPERTY | VALUE         |
       | chart    | bitnami/nginx |
+      | version  | 25.1.10       |
     And Helm Chart known as "<ReferenceNginxHelmChart>" has:
       | KEY         | CONDITION | VALUE    |
       | apiVersion  | equals    | v2       |
@@ -81,6 +81,7 @@ Feature: BDD Framework for Helm Charts
       | PROPERTY | VALUE            |
       | chart    | nginx            |
       | repo     | <BitnamiRepoUrl> |
+      | version  | 25.1.10          |
     And Helm Chart known as "<RepoReferenceNginxHelmChart>" has:
       | KEY         | CONDITION | VALUE   |
       | apiVersion  | equals    | v2      |
@@ -92,8 +93,8 @@ Feature: BDD Framework for Helm Charts
 
   Scenario: Defining OCI Chart
     Given OCIArtifact known as "<NginxOciArtifact>":
-      | PROPERTY | VALUE                                          |
-      | ref      | oci://registry-1.docker.io/bitnamicharts/nginx |
+      | PROPERTY | VALUE                                                   |
+      | ref      | oci://registry-1.docker.io/bitnamicharts/nginx:25.1.10 |
     And Helm Chart known as "<OciNginxHelmChart>":
       | PROPERTY | VALUE              |
       | chart    | <NginxOciArtifact> |
@@ -127,8 +128,7 @@ Feature: BDD Framework for Helm Charts
     And Helm Chart known as "<LocalNginxHelmChart>":
       | PROPERTY | VALUE                 |
       | chart    | <NginxChartDirectory> |
-    When I show chart for Helm Chart known as "<LocalNginxHelmChart>" with:
-      | OPTION | VALUE |
+    When I show chart for Helm Chart known as "<LocalNginxHelmChart>"
     Then the command result data has:
       | KEY  | CONDITION | VALUE |
       | name | equals    | nginx |
@@ -140,8 +140,7 @@ Feature: BDD Framework for Helm Charts
     And Helm Chart known as "<LocalNginxHelmChart>":
       | PROPERTY | VALUE                 |
       | chart    | <NginxChartDirectory> |
-    When I show values for Helm Chart known as "<LocalNginxHelmChart>" with:
-      | OPTION | VALUE |
+    When I show values for Helm Chart known as "<LocalNginxHelmChart>"
     Then the command result data has:
       | KEY          | CONDITION | VALUE |
       | replicaCount | equals    | 1     |
@@ -153,11 +152,10 @@ Feature: BDD Framework for Helm Charts
     And Helm Chart known as "<LocalNginxHelmChart>":
       | PROPERTY | VALUE                 |
       | chart    | <NginxChartDirectory> |
-    When I show readme for Helm Chart known as "<LocalNginxHelmChart>" with:
-      | OPTION | VALUE |
+    When I show readme for Helm Chart known as "<LocalNginxHelmChart>"
     Then the command exited with 0:
-      | SOURCE | CONDITION | VALUE                                  |
-      | STDOUT | contains  | Minimal stock-nginx deployment         |
+      | SOURCE | CONDITION | VALUE                          |
+      | STDOUT | contains  | Minimal stock-nginx deployment |
 
   Scenario: Showing a Helm Chart's CRDs
     Given Directory known as "<NginxChartDirectory>":
@@ -166,8 +164,7 @@ Feature: BDD Framework for Helm Charts
     And Helm Chart known as "<LocalNginxHelmChart>":
       | PROPERTY | VALUE                 |
       | chart    | <NginxChartDirectory> |
-    When I show crds for Helm Chart known as "<LocalNginxHelmChart>" with:
-      | OPTION | VALUE |
+    When I show crds for Helm Chart known as "<LocalNginxHelmChart>"
     Then the command exited with 0
 
   Scenario: Showing all information about a Helm Chart
@@ -177,12 +174,11 @@ Feature: BDD Framework for Helm Charts
     And Helm Chart known as "<LocalNginxHelmChart>":
       | PROPERTY | VALUE                 |
       | chart    | <NginxChartDirectory> |
-    When I show all for Helm Chart known as "<LocalNginxHelmChart>" with:
-      | OPTION | VALUE |
+    When I show all for Helm Chart known as "<LocalNginxHelmChart>"
     Then the command exited with 0:
-      | SOURCE | CONDITION | VALUE            |
-      | STDOUT | contains  | name: nginx      |
-      | STDOUT | contains  | replicaCount: 1  |
+      | SOURCE | CONDITION | VALUE           |
+      | STDOUT | contains  | name: nginx     |
+      | STDOUT | contains  | replicaCount: 1 |
 
   Scenario: Rejecting an unknown property
     When I attempt to define Helm Chart known as "<LocalNginxHelmChart>":
@@ -207,3 +203,13 @@ Feature: BDD Framework for Helm Charts
       | PROPERTY | VALUE                |
       | chart    | ./does-not-exist.tgz |
     Then it should have failed with 'HelmChart local archive does not exist'
+
+  Scenario: Rejecting a version pin on a non-reference chart source
+    Given Directory known as "<NginxChartDirectory>":
+      | PROPERTY | VALUE          |
+      | path     | ./charts/nginx |
+    When I attempt to define Helm Chart known as "<PinnedLocalHelmChart>":
+      | PROPERTY | VALUE                 |
+      | chart    | <NginxChartDirectory> |
+      | version  | 0.1.0                 |
+    Then it should have failed with 'HelmChart "version" is only valid for a reference chart'

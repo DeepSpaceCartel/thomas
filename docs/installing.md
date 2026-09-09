@@ -45,7 +45,7 @@ steps:
 export default {
   import: [
     'node_modules/thomas/features/support/helm/**/*.ts',
-    'node_modules/thomas/features/support/aliases/**/*.ts', // Directory/File/URL/OCIArtifact, used by HelmChart/HelmRepo
+    'node_modules/thomas/features/support/aliases/**/*.ts', // Directory/File/URL/OCIArtifact - see docs/ALIASES.md
     'node_modules/thomas/features/support/{assert_condition,query,run_command,attempt,world}.ts',
     'node_modules/thomas/features/step_definitions/{directory,helm,helm-repo,helm-release,common}.step.ts',
   ],

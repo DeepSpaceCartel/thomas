@@ -5,13 +5,14 @@ Real `kubectl`-observed cluster state, discovered by real labels — see
 
 ## Discovery
 
-`Deployment`, `Service`, and `Pod` are all discovered the same way — by
-real label selector, never a guessed/computed name. Each runs a real,
-read-only `kubectl get` at construction time. `namespace` is the one
-recognized non-label field; every other row is an arbitrary label
-key/value used to build a `-l` selector. Requires the selector to match
-**exactly one** real object; 0 or 2+ matches is a loud error (`Expected
-exactly one <kind> matching ...`).
+`Deployment`, `Service`, `Pod`, `ConfigMap`, and `ReplicaSet` are all
+discovered the same way — by real label selector, never a
+guessed/computed name. Each runs a real, read-only `kubectl get` at
+construction time. `namespace` is the one recognized non-label field;
+every other row is an arbitrary label key/value used to build a `-l`
+selector. Requires the selector to match **exactly one** real object; 0
+or 2+ matches is a loud error (`Expected exactly one <kind> matching
+...`).
 
 ### Deployment
 
@@ -29,7 +30,7 @@ Given Deployment known as "<Alias>":
       | app.kubernetes.io/instance | sandbox-nginx-k8s-release |
     ```
 
-=== "In practice"
+=== "Discovering after an atomic upgrade"
 
     ```gherkin
     When I upgrade HelmRelease known as "<NginxRelease>" with:
@@ -66,7 +67,7 @@ Given Service known as "<Alias>":
       | app.kubernetes.io/instance | sandbox-nginx-k8s-release |
     ```
 
-=== "Advanced"
+=== "Wrapped as a RestEndpoint"
 
     ```gherkin
     Given Service known as "<NotesService>":
@@ -103,7 +104,7 @@ mechanism.
       | app.kubernetes.io/instance | sandbox-nginx-k8s-release |
     ```
 
-=== "Advanced"
+=== "Discover, then poll until ready"
 
     ```gherkin
     Given Pod known as "<NginxPod>":
@@ -116,60 +117,130 @@ mechanism.
       | status.phase  | equals    | Running | pass    |
     ```
 
-    Discovering, then polling until ready
-    (`features/k8s/kubernetes.feature`).
+    (`features/k8s/kubernetes.feature`)
+
+### ConfigMap
+
+```gherkin
+Given ConfigMap known as "<Alias>":
+```
+
+No `logs` (same as `Service` — see [Get Logs](#get-logs) below). Unlike
+`ReplicaSet`, a chart's `ConfigMap` is not versioned per revision, so
+it's safe to discover regardless of how many times the owning release
+has been upgraded.
+
+```gherkin
+Given ConfigMap known as "<RestApiConfigMap>":
+  | PROPERTY                   | VALUE                    |
+  | namespace                  | thomas-helm-test         |
+  | app.kubernetes.io/instance | sandbox-rest-api-release |
+When I get ConfigMap known as "<RestApiConfigMap>" with:
+  | OPTION   | VALUE |
+  | --output | json  |
+Then the command result data has:
+  | KEY             | CONDITION | VALUE |
+  | data."notes.py" | exists    |       |
+```
+
+(`features/rest/health.feature`)
+
+### ReplicaSet
+
+```gherkin
+Given ReplicaSet known as "<Alias>":
+```
+
+!!! warning "Only safe against a release installed once and never upgraded again"
+    A Deployment keeps its old ReplicaSets around by default
+    (`revisionHistoryLimit`), and *every* one of them — old or current —
+    carries the same `app.kubernetes.io/name`/`instance` labels as the
+    Deployment itself. Discovering a `ReplicaSet` against a release
+    that's been upgraded or rolled back more than once genuinely matches
+    more than one real object and fails the same way any other
+    ambiguous selector does (`Expected exactly one replicaset matching
+    ...`). Only use it against a release installed once, like
+    `features/k8s/kubernetes.feature`'s `<NginxRelease>` below — never
+    against one that's been rolled back, like `<RollbackRelease>` in
+    [Helm: Manage a HelmRelease](HELM.md#manage-a-helmrelease).
+
+```gherkin
+Given ReplicaSet known as "<NginxReplicaSet>":
+  | PROPERTY                   | VALUE                     |
+  | namespace                  | thomas-helm-test          |
+  | app.kubernetes.io/name     | nginx                     |
+  | app.kubernetes.io/instance | sandbox-nginx-k8s-release |
+When I get ReplicaSet known as "<NginxReplicaSet>" with:
+  | OPTION   | VALUE |
+  | --output | json  |
+Then the command result data has:
+  | KEY             | CONDITION | VALUE |
+  | status.replicas | equals    | 1     |
+```
 
 ## Querying
 
-Reading a discovered object's current state, events, or logs.
+Reading a discovered object's current state, events, or logs. Works the
+same for every kind above.
 
 ### Get an Object
 
 ```gherkin
-When I get Deployment known as "<Alias>" with:
+When I get {word} known as "<Alias>"
+When I get {word} known as "<Alias>" with:
 ```
 
 Runs `kubectl get <kind> <name> -n <namespace>` plus any supplied
-options. Works the same for `Deployment`/`Service`/`Pod`.
+options — `{word}` is the kind (`Deployment`, `Service`, `Pod`,
+`ConfigMap`, `ReplicaSet`).
 
 ```gherkin
 When I get Deployment known as "<NginxDeployment>" with:
-  | OPTION | VALUE |
-  | -o     | json  |
+  | OPTION   | VALUE |
+  | --output | json  |
 Then the command result data has:
-  | KEY                                         | CONDITION | VALUE |
-  | status.readyReplicas                        | equals    | 1     |
-  | metadata.labels."app.kubernetes.io/version" | equals    | 1.27  |
+  | KEY                                          | CONDITION | VALUE |
+  | status.readyReplicas                         | equals    | 1     |
+  | status.readyReplicas                         | gte       | 1     |
+  | metadata.labels."app.kubernetes.io/version"  | equals    | 1.27  |
 ```
 
 ### Get Events
 
 ```gherkin
-When I get events for Deployment known as "<Alias>" with:
+When I get events for {word} known as "<Alias>"
+When I get events for {word} known as "<Alias>" with:
 ```
 
 Runs `kubectl get events` filtered to the object via
 `--field-selector involvedObject.name=<name>,involvedObject.kind=<Kind>`.
 
 ```gherkin
-When I get events for Deployment known as "<NginxDeployment>" with:
-  | OPTION | VALUE |
-Then the command exited with 0
+When I get events for Deployment known as "<NginxDeployment>"
+Then the command exited with 0:
+  | SOURCE | CONDITION | VALUE                 |
+  | STDOUT | contains  | Scaled up replica set |
 ```
+
+For asserting on event content as it becomes available rather than a
+one-shot snapshot, pair this with a poll instead — see [Poll Logs or
+Events for a Pod](#poll-logs-or-events-for-a-pod).
 
 ### Get Logs
 
 ```gherkin
-When I get logs for Deployment known as "<Alias>" with:
+When I get logs for {word} known as "<Alias>"
+When I get logs for {word} known as "<Alias>" with:
 ```
 
-Runs `kubectl logs <kind>/<name> -n <namespace>` (not available for
-`Service`, which has no logs).
+Runs `kubectl logs <kind>/<name> -n <namespace>` — not available for
+`Service`/`ConfigMap`, which have no logs.
 
 ```gherkin
-When I get logs for Deployment known as "<NginxDeployment>" with:
-  | OPTION | VALUE |
-Then the command exited with 0
+When I get logs for Deployment known as "<NginxDeployment>"
+Then the command exited with 0:
+  | SOURCE | CONDITION | VALUE                                      |
+  | STDOUT | contains  | Configuration complete; ready for start up |
 ```
 
 ## Polling

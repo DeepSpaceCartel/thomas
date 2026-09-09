@@ -12,6 +12,7 @@ nav:
       - Architecture: architecture.md
       - BDD conventions: bdd-conventions.md
   - Reference:
+      - Aliases: ALIASES.md
       - Helm: HELM.md
       - Kubernetes: KUBECTL.md
       - REST: REST.md

@@ -67,14 +67,24 @@ Feature: BDD Framework for the rest-api test fixture's Notes CRUD
       | KEY   | CONDITION | VALUE        |
       | title | equals    | Groceries v2 |
 
+    # PATCH only supplies "title" - proves a genuine partial update, not
+    # PUT's full replace: "body" must survive untouched.
+    When I send a PATCH request to RestEndpoint known as "<NotesApi>" path "/notes/<NoteId>" with:
+      | TYPE  | KEY   | VALUE          |
+      | FIELD | title | Groceries v3  |
+    Then the response status is 200
+    Then the command result data has:
+      | KEY   | CONDITION | VALUE             |
+      | title | equals    | Groceries v3      |
+      | body  | equals    | Milk, eggs, bread |
+
     When I send a DELETE request to RestEndpoint known as "<NotesApi>" path "/notes/<NoteId>"
     Then the response status is 204
 
     When I send a GET request to RestEndpoint known as "<NotesApi>" path "/notes/<NoteId>"
     Then the response status is 404
 
-    When I uninstall HelmRelease known as "<NotesRelease>" with:
-      | OPTION | VALUE |
+    When I uninstall HelmRelease known as "<NotesRelease>"
     Then the command exited with 0
 
   Scenario: Rejecting a request for a Note that was never created
@@ -110,6 +120,5 @@ Feature: BDD Framework for the rest-api test fixture's Notes CRUD
       | SOURCE | CONDITION | VALUE            |
       | BODY   | contains  | note not found   |
 
-    When I uninstall HelmRelease known as "<NotesMissingRelease>" with:
-      | OPTION | VALUE |
+    When I uninstall HelmRelease known as "<NotesMissingRelease>"
     Then the command exited with 0

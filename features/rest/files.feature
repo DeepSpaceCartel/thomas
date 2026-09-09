@@ -62,6 +62,5 @@ Feature: BDD Framework for the rest-api test fixture's Files CRUD
     When I send a GET request to RestEndpoint known as "<FilesApi>" path "/files/<FileId>/download"
     Then the response status is 404
 
-    When I uninstall HelmRelease known as "<FilesRelease>" with:
-      | OPTION | VALUE |
+    When I uninstall HelmRelease known as "<FilesRelease>"
     Then the command exited with 0

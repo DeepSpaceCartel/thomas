@@ -18,13 +18,12 @@ Feature: BDD Framework for Helm Repositories
       | SOURCE | CONDITION | VALUE                                |
       | STDOUT | contains  | has been added to your repositories  |
     And I list Helm Repo with:
-      | OPTION | VALUE |
-      | -o     | yaml  |
+      | OPTION   | VALUE |
+      | --output | yaml  |
     Then the command result data has:
       | KEY      | CONDITION | VALUE               |
       | [*].name | equals    | sandbox-add-example |
-    And I remove Helm Repo known as "<SandboxAddExampleRepo>" with:
-      | OPTION | VALUE |
+    And I remove Helm Repo known as "<SandboxAddExampleRepo>"
     Then the command exited with 0
 
   Scenario: Listing Helm Repos
@@ -35,11 +34,10 @@ Feature: BDD Framework for Helm Repositories
       | PROPERTY | VALUE            |
       | name     | bitnami          |
       | url      | <BitnamiRepoUrl> |
-    When I add Helm Repo known as "<BitnamiHelmRepo>" with:
-      | OPTION | VALUE |
+    When I add Helm Repo known as "<BitnamiHelmRepo>"
     And I list Helm Repo with:
-      | OPTION | VALUE |
-      | -o     | yaml  |
+      | OPTION   | VALUE |
+      | --output | yaml  |
     Then the command result data has:
       | KEY      | CONDITION | VALUE   |
       | [*].name | equals    | bitnami |
@@ -52,16 +50,14 @@ Feature: BDD Framework for Helm Repositories
       | PROPERTY | VALUE                  |
       | name     | sandbox-remove-example |
       | url      | <MetricsServerRepoUrl> |
-    When I add Helm Repo known as "<SandboxRemoveExampleRepo>" with:
-      | OPTION | VALUE |
-    And I remove Helm Repo known as "<SandboxRemoveExampleRepo>" with:
-      | OPTION | VALUE |
+    When I add Helm Repo known as "<SandboxRemoveExampleRepo>"
+    And I remove Helm Repo known as "<SandboxRemoveExampleRepo>"
     Then the command exited with 0:
-      | SOURCE | CONDITION | VALUE                                    |
-      | STDOUT | contains  | has been removed from your repositories  |
+      | SOURCE | CONDITION | VALUE                                   |
+      | STDOUT | contains  | has been removed from your repositories |
     And I list Helm Repo with:
-      | OPTION | VALUE |
-      | -o     | yaml  |
+      | OPTION   | VALUE |
+      | --output | yaml  |
     Then the command result data has:
       | KEY      | CONDITION  | VALUE                  |
       | [*].name | not_equals | sandbox-remove-example |
@@ -74,8 +70,7 @@ Feature: BDD Framework for Helm Repositories
       | PROPERTY | VALUE                  |
       | name     | metrics-server         |
       | url      | <MetricsServerRepoUrl> |
-    When I add Helm Repo known as "<MetricsServerHelmRepo>" with:
-      | OPTION | VALUE |
+    When I add Helm Repo known as "<MetricsServerHelmRepo>"
     And I update Helm Repo known as "<MetricsServerHelmRepo>" with:
       | OPTION                     | VALUE |
       | --fail-on-repo-update-fail | True  |

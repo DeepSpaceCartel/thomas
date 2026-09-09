@@ -17,7 +17,8 @@ instead — this skill is for changing Thomas itself.
 
 `features/support/world.ts` holds one `Map<string, T>` field per alias
 type (`charts`, `repos`, `helmReleases`, `directories`, `files`, `urls`,
-`ociArtifacts`, `deployments`, `services`, `pods`, `restEndpoints`),
+`ociArtifacts`, `deployments`, `services`, `pods`, `configMaps`,
+`replicaSets`, `restEndpoints`),
 keyed by the literal alias string *including* the `<...>` brackets, plus
 `capturedValues: Map<string, string>` for dynamic capture (see below). A
 new alias type = one new file under `support/<domain>/`, one new `Map`
@@ -69,7 +70,7 @@ genuinely didn't fit, not for variety):
 | `KEY` \| `CONDITION` \| `VALUE` | `... has:` / `... result data has:` | Assertions against parsed structured data (JMESPath `KEY`) |
 | `SOURCE` \| `CONDITION` \| `VALUE` | `the command exited with {int}:` | Assertions against raw `STDOUT`/`STDERR` text |
 | `KEY` \| `CONDITION` \| `VALUE` \| `OUTCOME` | `When I poll ... until:` | Same condition-checking, plus polarity: `pass` (must hold to succeed) or `fail` (holding means stop and fail immediately) |
-| `TYPE` \| `KEY` \| `VALUE` | `When I send a {word} request ... with:` | Builds a real HTTP request (`HEADER`/`QUERY`/`FIELD`/`BODY`/`FORM`/`FILE`) |
+| `TYPE` \| `KEY` \| `VALUE` | `When I send a {httpMethod} request ... with:` | Builds a real HTTP request (`HEADER`/`QUERY`/`FIELD`/`BODY`/`FORM`/`FILE`) |
 
 `OPTION|VALUE`'s `True`/`False` convention is **only** for CLI boolean
 flags via `buildArgs()` — do not use capitalized `True`/`False` in a
@@ -100,8 +101,11 @@ universal (passes only if *no* element matches).
 ## Conditions
 
 `equals`, `contains`, `icontains` (case-insensitive), `undefined` (field
-genuinely absent, not falsy), `not_equals` (only really useful against
-an array). All implemented once in `support/assert_condition.ts`,
+genuinely absent, not falsy), `exists` (the literal inverse of
+`undefined`), `not_equals` (only really useful against an array),
+`gt`/`gte`/`lt`/`lte` (numeric comparison — both sides parsed with
+`Number()`, the one family of conditions that isn't a plain string
+comparison). All implemented once in `support/assert_condition.ts`,
 exported both as a throwing `assertCondition` (used by every one-shot
 `Then`) and a boolean `conditionHolds` (used by polling) — one
 implementation of "does this hold," not two. Extend this file, don't
@@ -173,7 +177,10 @@ user-facing steps this powers.
    `alias-*.feature` files.
 7. Document it: add its steps and alias construction shape to the
    relevant `../thomas-bdd-testing/{helm,kubectl,rest}/REFERENCE.md`
-   (or a new subfolder, if it's a genuinely new tool domain) and the
-   matching `docs/{HELM,KUBECTL,REST}.md` page — each documents its
-   alias types alongside the steps that use them, not on a separate
-   page.
+   (or a new subfolder, if it's a genuinely new tool domain). For the
+   public docs site: a type with real commands of its own (`Directory`,
+   `Deployment`/`Service`/`Pod`/`ConfigMap`/`ReplicaSet`) is documented
+   in its tool's page (`docs/{HELM,KUBECTL,REST}.md`) alongside those
+   commands; a type that exists purely to be constructed and referenced,
+   with no commands of its own (`File`, `URL`, `OCIArtifact`), belongs on
+   `docs/ALIASES.md` instead, cross-linked from wherever it's used.

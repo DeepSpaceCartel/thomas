@@ -22,66 +22,60 @@ Feature: BDD Framework for Helm Releases
       | --create-namespace   | True  |
     Then the command exited with 0
     When I status HelmRelease known as "<NginxRelease>" with:
-      | OPTION | VALUE |
-      | -o     | yaml  |
+      | OPTION   | VALUE |
+      | --output | yaml  |
     Then the command result data has:
       | KEY         | CONDITION | VALUE    |
       | info.status | equals    | deployed |
     When I history HelmRelease known as "<NginxRelease>" with:
-      | OPTION | VALUE |
-      | -o     | yaml  |
+      | OPTION   | VALUE |
+      | --output | yaml  |
     Then the command result data has:
       | KEY        | CONDITION | VALUE    |
       | [*].status | equals    | deployed |
     When I get values for HelmRelease known as "<NginxRelease>" with:
-      | OPTION | VALUE |
-      | -a     | True  |
-      | -o     | yaml  |
+      | OPTION   | VALUE |
+      | --all    | True  |
+      | --output | yaml  |
     Then the command result data has:
       | KEY          | CONDITION | VALUE |
       | replicaCount | equals    | 1     |
     When I list HelmRelease with:
-      | OPTION | VALUE              |
-      | -n     | thomas-helm-test |
-      | -o     | yaml               |
+      | OPTION      | VALUE             |
+      | --namespace | thomas-helm-test  |
+      | --output    | yaml              |
     Then the command result data has:
       | KEY      | CONDITION | VALUE                 |
       | [*].name | equals    | sandbox-nginx-release |
     When I get metadata for HelmRelease known as "<NginxRelease>" with:
-      | OPTION | VALUE |
-      | -o     | yaml  |
+      | OPTION   | VALUE |
+      | --output | yaml  |
     Then the command result data has:
-      | KEY   | CONDITION | VALUE |
+      | KEY   | CONDITION | VALUE                 |
       | name  | equals    | sandbox-nginx-release |
-      | chart | equals    | nginx |
-    When I get hooks for HelmRelease known as "<NginxRelease>" with:
-      | OPTION | VALUE |
+      | chart | equals    | nginx                 |
+    When I get hooks for HelmRelease known as "<NginxRelease>"
     Then the command exited with 0:
-      | SOURCE | CONDITION | VALUE                        |
-      | STDOUT | contains  | helm.sh/hook": test          |
-    When I get manifest for HelmRelease known as "<NginxRelease>" with:
-      | OPTION | VALUE |
+      | SOURCE | CONDITION | VALUE                |
+      | STDOUT | contains  | helm.sh/hook": test  |
+    When I get manifest for HelmRelease known as "<NginxRelease>"
     Then the command exited with 0:
-      | SOURCE | CONDITION | VALUE                                   |
-      | STDOUT | contains  | # Source: nginx/templates/service.yaml  |
-    When I get notes for HelmRelease known as "<NginxRelease>" with:
-      | OPTION | VALUE |
-    Then the command exited with 0:
-      | SOURCE | CONDITION | VALUE       |
-      | STDOUT | contains  | Access it:  |
-    When I get all for HelmRelease known as "<NginxRelease>" with:
-      | OPTION | VALUE |
-    Then the command exited with 0:
-      | SOURCE | CONDITION | VALUE                   |
-      | STDOUT | contains  | NOTES:                  |
+      | SOURCE | CONDITION | VALUE                                  |
       | STDOUT | contains  | # Source: nginx/templates/service.yaml |
-    When I test HelmRelease known as "<NginxRelease>" with:
-      | OPTION | VALUE |
+    When I get notes for HelmRelease known as "<NginxRelease>"
+    Then the command exited with 0:
+      | SOURCE | CONDITION | VALUE      |
+      | STDOUT | contains  | Access it: |
+    When I get all for HelmRelease known as "<NginxRelease>"
+    Then the command exited with 0:
+      | SOURCE | CONDITION | VALUE                                  |
+      | STDOUT | contains  | NOTES:                                 |
+      | STDOUT | contains  | # Source: nginx/templates/service.yaml |
+    When I test HelmRelease known as "<NginxRelease>"
     Then the command exited with 0:
       | SOURCE | CONDITION | VALUE     |
       | STDOUT | contains  | Succeeded |
-    When I uninstall HelmRelease known as "<NginxRelease>" with:
-      | OPTION | VALUE |
+    When I uninstall HelmRelease known as "<NginxRelease>"
     Then the command exited with 0:
       | SOURCE | CONDITION | VALUE       |
       | STDOUT | contains  | uninstalled |
@@ -111,10 +105,9 @@ Feature: BDD Framework for Helm Releases
       | OPTION | VALUE |
       |        | 1     |
     Then the command exited with 0:
-      | SOURCE | CONDITION | VALUE                       |
-      | STDOUT | contains  | Rollback was a success      |
-    When I uninstall HelmRelease known as "<RollbackRelease>" with:
-      | OPTION | VALUE |
+      | SOURCE | CONDITION | VALUE                  |
+      | STDOUT | contains  | Rollback was a success |
+    When I uninstall HelmRelease known as "<RollbackRelease>"
     Then the command exited with 0
 
   Scenario: Rejecting a duplicate install
@@ -130,14 +123,12 @@ Feature: BDD Framework for Helm Releases
       | name      | sandbox-duplicate-release |
       | namespace | thomas-helm-test      |
     When I install HelmRelease known as "<DuplicateRelease>" with:
-      | OPTION            | VALUE |
+      | OPTION             | VALUE |
       | --create-namespace | True  |
     Then the command exited with 0
-    When I install HelmRelease known as "<DuplicateRelease>" with:
-      | OPTION | VALUE |
+    When I install HelmRelease known as "<DuplicateRelease>"
     Then the command exited with 1:
-      | SOURCE | CONDITION | VALUE                          |
-      | STDERR | contains  | cannot re-use a name            |
-    When I uninstall HelmRelease known as "<DuplicateRelease>" with:
-      | OPTION | VALUE |
+      | SOURCE | CONDITION | VALUE                |
+      | STDERR | contains  | cannot re-use a name |
+    When I uninstall HelmRelease known as "<DuplicateRelease>"
     Then the command exited with 0

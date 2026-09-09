@@ -5,8 +5,8 @@ first for the general pattern this extends.
 
 ## Discovery by label selector, not by name
 
-`Deployment`/`Service`/`Pod` are discovered by real Kubernetes labels,
-not a guessed/computed resource name:
+`Deployment`/`Service`/`Pod`/`ConfigMap`/`ReplicaSet` are discovered by
+real Kubernetes labels, not a guessed/computed resource name:
 
 ```gherkin
 Given Deployment known as "<NginxDeployment>":
@@ -21,28 +21,60 @@ closed field list to validate against, since a real chart's label set
 can't be enumerated in advance. Discovery requires the selector to match
 **exactly one** real object — 0 or 2+ matches is a loud error
 (`Expected exactly one <kind> matching ...`), never a silent pick-first.
-This runs a real, read-only `kubectl get` at `Given` time.
+This runs a real, read-only `kubectl get` at `Given` time. Each kind's
+`Given`/`I attempt to define ...` pair is a literal, per-kind
+registration (a single `{word} known as ...:` step would collide with
+every other single-word alias type — `Directory`, `HelmRelease`, `File`,
+`URL`, `OCIArtifact` — already registered the same shape).
+
+!!! warning "ReplicaSet is only safe against a release installed once"
+    A Deployment keeps old ReplicaSets around across revisions
+    (`revisionHistoryLimit`), and every one of them carries the same
+    `app.kubernetes.io/name`/`instance` labels as the Deployment itself
+    — so discovering a `ReplicaSet` against a release upgraded or rolled
+    back more than once genuinely matches more than one object and
+    fails the "exactly one" check above. Only use it against a
+    single-revision release.
 
 ## Querying a discovered object
 
 ```gherkin
-When I get Deployment known as "<Alias>" with:              # kubectl get deployment <name> -n <namespace>
-When I get events for Deployment known as "<Alias>" with:    # kubectl get events --field-selector involvedObject.name=...
-When I get logs for Deployment known as "<Alias>" with:       # kubectl logs deployment/<name>
+When I get {word} known as "<Alias>"                          # kubectl get <kind> <name> -n <namespace>
+When I get {word} known as "<Alias>" with:
+When I get events for {word} known as "<Alias>"                # kubectl get events --field-selector involvedObject.name=...
+When I get events for {word} known as "<Alias>" with:
+When I get logs for {word} known as "<Alias>"                  # kubectl logs <kind>/<name>
+When I get logs for {word} known as "<Alias>" with:
 ```
-`Service` supports `get`/`get events` (no `logs` — a Service has none);
-`Pod` supports all three, plus the polling steps below.
+`{word}` is the kind (`Deployment`, `Service`, `Pod`, `ConfigMap`,
+`ReplicaSet`) — one generic registration per action, driven by a
+`KIND_REGISTRY` map in `kubernetes.step.ts`, not one registration per
+kind (adding a new kind needs only a new `World` map field + registry
+entry, no new step text). `Service`/`ConfigMap` support `get`/`get
+events` (no `logs` — neither has any); `Pod` supports all three, plus
+the polling steps below.
 
 **In practice** (`features/k8s/kubernetes.feature`):
 ```gherkin
 When I get Deployment known as "<NginxDeployment>" with:
-  | OPTION | VALUE |
-  | -o     | json  |
+  | OPTION   | VALUE |
+  | --output | json  |
 Then the command result data has:
   | KEY                                         | CONDITION | VALUE |
   | status.readyReplicas                        | equals    | 1     |
+  | status.readyReplicas                        | gte       | 1     |
   | status.availableReplicas                    | equals    | 1     |
   | metadata.labels."app.kubernetes.io/version" | equals    | 1.27  |
+```
+
+For events/logs, prefer the table-less form when there's nothing to
+pass, and pair with a poll (below) rather than a one-shot `get` when the
+assertion needs to be on real content, not just exit code 0:
+```gherkin
+When I get events for Deployment known as "<NginxDeployment>"
+Then the command exited with 0:
+  | SOURCE | CONDITION | VALUE                 |
+  | STDOUT | contains  | Scaled up replica set |
 ```
 
 ## Polling for eventually-consistent state

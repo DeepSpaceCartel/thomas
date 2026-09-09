@@ -33,6 +33,18 @@ Feature: BDD Framework for the rest-api test fixture's health probes
       | service  | <RestApiService> |
       | port     | 8000             |
 
+    Given ConfigMap known as "<RestApiConfigMap>":
+      | PROPERTY                   | VALUE                    |
+      | namespace                  | thomas-helm-test         |
+      | app.kubernetes.io/instance | sandbox-rest-api-release |
+    When I get ConfigMap known as "<RestApiConfigMap>" with:
+      | OPTION   | VALUE |
+      | --output | json  |
+    Then the command result data has:
+      | KEY             | CONDITION | VALUE |
+      | data."notes.py" | exists    |       |
+      | data."main.py"  | exists    |       |
+
     When I send a GET request to RestEndpoint known as "<RestApi>" path "/health/startup"
     Then the response status is 200:
       | SOURCE | CONDITION | VALUE          |
@@ -50,8 +62,7 @@ Feature: BDD Framework for the rest-api test fixture's health probes
     When I send a GET request to RestEndpoint known as "<RestApi>" path "/health/live"
     Then the response status is 200
 
-    When I uninstall HelmRelease known as "<RestApiRelease>" with:
-      | OPTION | VALUE |
+    When I uninstall HelmRelease known as "<RestApiRelease>"
     Then the command exited with 0
 
   Scenario: Flipping readiness removes the Pod from Service endpoints without restarting it
@@ -105,8 +116,7 @@ Feature: BDD Framework for the rest-api test fixture's health probes
     # fully proven by the poll above: k8s's own readinessProbe (hitting
     # this exact path) is what flipped containerStatuses[0].ready false.
 
-    When I uninstall HelmRelease known as "<ReadinessRelease>" with:
-      | OPTION | VALUE |
+    When I uninstall HelmRelease known as "<ReadinessRelease>"
     Then the command exited with 0
 
   Scenario: Rejecting an unregistered Service alias from a RestEndpoint

@@ -8,18 +8,16 @@ Feature: BDD Framework for Directory-scoped Helm commands
     Given Directory known as "<ChartsDirectory>":
       | PROPERTY | VALUE    |
       | path     | ./charts |
-    When I index Directory known as "<ChartsDirectory>" with:
-      | OPTION | VALUE |
+    When I index Directory known as "<ChartsDirectory>"
     Then the command exited with 0
 
   Scenario: Linting a Chart Directory
     Given Directory known as "<NginxChartDirectory>":
       | PROPERTY | VALUE          |
       | path     | ./charts/nginx |
-    When I lint Directory known as "<NginxChartDirectory>" with:
-      | OPTION | VALUE |
+    When I lint Directory known as "<NginxChartDirectory>"
     Then the command exited with 0:
-      | SOURCE | CONDITION | VALUE                            |
+      | SOURCE | CONDITION | VALUE                                |
       | STDOUT | contains  | 1 chart(s) linted, 0 chart(s) failed |
 
   Scenario: Packaging a Chart Directory
@@ -27,19 +25,18 @@ Feature: BDD Framework for Directory-scoped Helm commands
       | PROPERTY | VALUE          |
       | path     | ./charts/nginx |
     When I package Directory known as "<NginxChartDirectory>" with:
-      | OPTION | VALUE     |
-      | -d     | .cache    |
+      | OPTION       | VALUE  |
+      | --destination | .cache |
     Then the command exited with 0:
-      | SOURCE | CONDITION | VALUE                          |
-      | STDOUT | contains  | Successfully packaged chart    |
+      | SOURCE | CONDITION | VALUE                       |
+      | STDOUT | contains  | Successfully packaged chart |
 
   Scenario: Listing Chart Dependencies
     Given Directory known as "<NginxChartDirectory>":
       | PROPERTY | VALUE          |
       | path     | ./charts/nginx |
-    When I list dependencies for Directory known as "<NginxChartDirectory>" with:
-      | OPTION | VALUE |
+    When I list dependencies for Directory known as "<NginxChartDirectory>"
     Then the command exited with 0:
-      | SOURCE | CONDITION | VALUE                  |
-      | STDOUT | contains  | no dependencies at     |
+      | SOURCE | CONDITION | VALUE              |
+      | STDOUT | contains  | no dependencies at |
 

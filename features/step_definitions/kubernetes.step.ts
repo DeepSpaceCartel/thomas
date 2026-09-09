@@ -1,8 +1,10 @@
 import { DataTable, Given, When } from '@cucumber/cucumber';
 import { World } from '../support/world.js';
-import { Deployment, deploymentFromTable } from '../support/k8s/deployment.js';
-import { Service, serviceFromTable } from '../support/k8s/service.js';
+import { deploymentFromTable } from '../support/k8s/deployment.js';
+import { serviceFromTable } from '../support/k8s/service.js';
 import { Pod, podFromTable } from '../support/k8s/pod.js';
+import { configMapFromTable } from '../support/k8s/configmap.js';
+import { replicaSetFromTable } from '../support/k8s/replicaset.js';
 import { K8sObjectRef } from '../support/k8s/discover.js';
 import { buildArgs, CommandResult, runCommand } from '../support/run_command.js';
 import { attempt } from '../support/attempt.js';
@@ -39,28 +41,64 @@ When('I attempt to define Pod known as {string}:', function (this: World, alias:
   });
 });
 
-function getDeployment(world: World, alias: string): Deployment {
-  const deployment = world.deployments.get(alias);
-  if (!deployment) {
-    throw new Error(`No Deployment registered as "${alias}"`);
+Given('ConfigMap known as {string}:', function (this: World, alias: string, dataTable: DataTable) {
+  this.configMaps.set(alias, configMapFromTable(dataTable));
+});
+
+When('I attempt to define ConfigMap known as {string}:', function (this: World, alias: string, dataTable: DataTable) {
+  return attempt(this, () => {
+    this.configMaps.set(alias, configMapFromTable(dataTable));
+  });
+});
+
+// See support/k8s/replicaset.ts's header comment - only safe to register
+// against a release that has been installed once and never upgraded/
+// rolled back again, or the "exactly one match" check below fails.
+Given('ReplicaSet known as {string}:', function (this: World, alias: string, dataTable: DataTable) {
+  this.replicaSets.set(alias, replicaSetFromTable(dataTable));
+});
+
+When('I attempt to define ReplicaSet known as {string}:', function (this: World, alias: string, dataTable: DataTable) {
+  return attempt(this, () => {
+    this.replicaSets.set(alias, replicaSetFromTable(dataTable));
+  });
+});
+
+// One place mapping a lowercase kubectl kind word (the Gherkin {word}
+// token in the get/events/logs steps below) to which World map holds
+// that kind's discovered refs, and whether the kind supports `kubectl
+// logs` (Service/ConfigMap don't - neither has logs). This is the entire
+// per-kind cost of wiring a new kind into get/events/logs - no new step
+// text needed. The `Given`/`attempt-to-define` pairs above stay literal,
+// unavoidable registrations (see extend-thomas/SKILL.md and the docs) -
+// a single `{word} known as ...:` step would collide with every other
+// single-word alias type (Directory, HelmRelease, File, URL,
+// OCIArtifact) already registered the same shape.
+const KIND_REGISTRY: Record<string, { map: (world: World) => Map<string, K8sObjectRef>; supportsLogs: boolean }> = {
+  deployment: { map: (w) => w.deployments, supportsLogs: true },
+  service: { map: (w) => w.services, supportsLogs: false },
+  pod: { map: (w) => w.pods, supportsLogs: true },
+  configmap: { map: (w) => w.configMaps, supportsLogs: false },
+  replicaset: { map: (w) => w.replicaSets, supportsLogs: false },
+};
+
+function getRegisteredObject(world: World, kind: string, alias: string): K8sObjectRef {
+  const entry = KIND_REGISTRY[kind.toLowerCase()];
+  if (!entry) {
+    throw new Error(`Unknown Kubernetes kind "${kind}" (known kinds: ${Object.keys(KIND_REGISTRY).join(', ')})`);
   }
-  return deployment;
+  const obj = entry.map(world).get(alias);
+  if (!obj) {
+    throw new Error(`No ${kind} registered as "${alias}"`);
+  }
+  return obj;
 }
 
-function getService(world: World, alias: string): Service {
-  const service = world.services.get(alias);
-  if (!service) {
-    throw new Error(`No Service registered as "${alias}"`);
+function assertLogsSupported(kind: string): void {
+  const entry = KIND_REGISTRY[kind.toLowerCase()];
+  if (entry && !entry.supportsLogs) {
+    throw new Error(`${kind} has no logs`);
   }
-  return service;
-}
-
-function getPod(world: World, alias: string): Pod {
-  const pod = world.pods.get(alias);
-  if (!pod) {
-    throw new Error(`No Pod registered as "${alias}"`);
-  }
-  return pod;
 }
 
 // The three verb shapes (get/events/logs) all reduce to
@@ -101,36 +139,27 @@ function kubectlLogs(ref: K8sObjectRef, kind: string, extraArgs: string[]): Comm
   return runCommand('kubectl', ['logs', `${kind}/${ref.name}`, '-n', ref.namespace, ...extraArgs]);
 }
 
-When('I get Deployment known as {string} with:', function (this: World, alias: string, table: DataTable) {
-  this.lastCommandResult = kubectlGet(getDeployment(this, alias), 'deployment', buildArgs(table));
+When('I get {word} known as {string}', function (this: World, kind: string, alias: string) {
+  this.lastCommandResult = kubectlGet(getRegisteredObject(this, kind, alias), kind.toLowerCase(), []);
+});
+When('I get {word} known as {string} with:', function (this: World, kind: string, alias: string, table: DataTable) {
+  this.lastCommandResult = kubectlGet(getRegisteredObject(this, kind, alias), kind.toLowerCase(), buildArgs(table));
 });
 
-When('I get events for Deployment known as {string} with:', function (this: World, alias: string, table: DataTable) {
-  this.lastCommandResult = kubectlEvents(getDeployment(this, alias), 'deployment', buildArgs(table));
+When('I get events for {word} known as {string}', function (this: World, kind: string, alias: string) {
+  this.lastCommandResult = kubectlEvents(getRegisteredObject(this, kind, alias), kind.toLowerCase(), []);
+});
+When('I get events for {word} known as {string} with:', function (this: World, kind: string, alias: string, table: DataTable) {
+  this.lastCommandResult = kubectlEvents(getRegisteredObject(this, kind, alias), kind.toLowerCase(), buildArgs(table));
 });
 
-When('I get logs for Deployment known as {string} with:', function (this: World, alias: string, table: DataTable) {
-  this.lastCommandResult = kubectlLogs(getDeployment(this, alias), 'deployment', buildArgs(table));
+When('I get logs for {word} known as {string}', function (this: World, kind: string, alias: string) {
+  assertLogsSupported(kind);
+  this.lastCommandResult = kubectlLogs(getRegisteredObject(this, kind, alias), kind.toLowerCase(), []);
 });
-
-When('I get Service known as {string} with:', function (this: World, alias: string, table: DataTable) {
-  this.lastCommandResult = kubectlGet(getService(this, alias), 'service', buildArgs(table));
-});
-
-When('I get events for Service known as {string} with:', function (this: World, alias: string, table: DataTable) {
-  this.lastCommandResult = kubectlEvents(getService(this, alias), 'service', buildArgs(table));
-});
-
-When('I get Pod known as {string} with:', function (this: World, alias: string, table: DataTable) {
-  this.lastCommandResult = kubectlGet(getPod(this, alias), 'pod', buildArgs(table));
-});
-
-When('I get events for Pod known as {string} with:', function (this: World, alias: string, table: DataTable) {
-  this.lastCommandResult = kubectlEvents(getPod(this, alias), 'pod', buildArgs(table));
-});
-
-When('I get logs for Pod known as {string} with:', function (this: World, alias: string, table: DataTable) {
-  this.lastCommandResult = kubectlLogs(getPod(this, alias), 'pod', buildArgs(table));
+When('I get logs for {word} known as {string} with:', function (this: World, kind: string, alias: string, table: DataTable) {
+  assertLogsSupported(kind);
+  this.lastCommandResult = kubectlLogs(getRegisteredObject(this, kind, alias), kind.toLowerCase(), buildArgs(table));
 });
 
 // --- Polling: for state that isn't guaranteed stable the instant it's
@@ -183,20 +212,20 @@ function pollPodStatus(world: World, pod: Pod, interval: string, timeout: string
 }
 
 When('I poll Pod known as {string} every {string} for up to {string} until:', function (this: World, alias: string, interval: string, timeout: string, table: DataTable) {
-  return pollPodStatus(this, getPod(this, alias), interval, timeout, table);
+  return pollPodStatus(this, getRegisteredObject(this, 'pod', alias), interval, timeout, table);
 });
 
 When('I attempt to poll Pod known as {string} every {string} for up to {string} until:', function (this: World, alias: string, interval: string, timeout: string, table: DataTable) {
-  const pod = getPod(this, alias);
+  const pod = getRegisteredObject(this, 'pod', alias);
   return attempt(this, () => pollPodStatus(this, pod, interval, timeout, table));
 });
 
 When('I poll logs for Pod known as {string} every {string} for up to {string} until:', function (this: World, alias: string, interval: string, timeout: string, table: DataTable) {
-  const pod = getPod(this, alias);
+  const pod = getRegisteredObject(this, 'pod', alias);
   return pollRawText(this, interval, timeout, table, () => kubectlLogs(pod, 'pod', []));
 });
 
 When('I poll events for Pod known as {string} every {string} for up to {string} until:', function (this: World, alias: string, interval: string, timeout: string, table: DataTable) {
-  const pod = getPod(this, alias);
+  const pod = getRegisteredObject(this, 'pod', alias);
   return pollRawText(this, interval, timeout, table, () => kubectlEvents(pod, 'pod', []));
 });

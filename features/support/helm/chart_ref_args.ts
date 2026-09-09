@@ -13,7 +13,9 @@ export function chartRefToArgs(chart: ChartRef): string[] {
     case 'url':
     case 'oci':
       return [chart.ref];
-    case 'reference':
-      return chart.repo ? [chart.name, '--repo', chart.repo] : [chart.name];
+    case 'reference': {
+      const args = chart.repo ? [chart.name, '--repo', chart.repo] : [chart.name];
+      return chart.version ? [...args, '--version', chart.version] : args;
+    }
   }
 }

@@ -13,6 +13,11 @@ class NoteIn(BaseModel):
     body: str
 
 
+class NotePatch(BaseModel):
+    title: str | None = None
+    body: str | None = None
+
+
 class Note(NoteIn):
     id: str
 
@@ -48,6 +53,16 @@ def update_note(note_id: str, note: NoteIn) -> Note:
     if note_id not in _notes:
         raise HTTPException(404, "note not found")
     updated = Note(id=note_id, **note.model_dump())
+    _notes[note_id] = updated
+    return updated
+
+
+@router.patch("/{note_id}")
+def patch_note(note_id: str, patch: NotePatch) -> Note:
+    if note_id not in _notes:
+        raise HTTPException(404, "note not found")
+    current = _notes[note_id]
+    updated = current.model_copy(update=patch.model_dump(exclude_unset=True))
     _notes[note_id] = updated
     return updated
 

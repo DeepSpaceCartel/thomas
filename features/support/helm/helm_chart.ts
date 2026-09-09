@@ -21,16 +21,24 @@ export type ChartRef =
   | { kind: 'url'; ref: string }
   | { kind: 'local-archive'; path: string }
   | { kind: 'local-directory'; path: string }
-  | { kind: 'reference'; name: string; repo?: string };
+  | { kind: 'reference'; name: string; repo?: string; version?: string };
 
-function parseChartRef(raw: string, repo: string | undefined): ChartRef {
+// "version" only applies to the "reference" kind - it becomes a real
+// `--version` flag on `helm pull`/`install`/`upgrade`/`template`/`show`.
+// The other four kinds are already pinned by construction: a local path
+// IS a specific version, and `url`/`oci` already carry their exact
+// version in the URL/tag itself (e.g. `nginx-18.2.5.tgz`,
+// `oci://.../nginx:25.1.10`) - a separate `version` field there would be
+// redundant with (and could silently disagree with) what's already in
+// the ref, so it's rejected rather than silently ignored.
+function parseChartRef(raw: string, repo: string | undefined, version: string | undefined): ChartRef {
   if (raw.startsWith('oci://')) return { kind: 'oci', ref: raw };
   if (/^https?:\/\//.test(raw)) return { kind: 'url', ref: raw };
   if (raw.startsWith('./') || raw.startsWith('../') || raw.startsWith('/')) {
     return raw.endsWith('.tgz') ? { kind: 'local-archive', path: raw } : { kind: 'local-directory', path: raw };
   }
-  if (raw.includes('/')) return { kind: 'reference', name: raw }; // "example/mariadb" - repo baked into the ref itself
-  if (repo) return { kind: 'reference', name: raw, repo }; // "nginx" + a separate repo field, form 5
+  if (raw.includes('/')) return { kind: 'reference', name: raw, version }; // "example/mariadb" - repo baked into the ref itself
+  if (repo) return { kind: 'reference', name: raw, repo, version }; // "nginx" + a separate repo field, form 5
   throw new Error(`Cannot determine chart reference kind for "${raw}" (a bare name with no "/" needs a "repo" field)`);
 }
 
@@ -55,7 +63,7 @@ function validateChartExists(chart: ChartRef): void {
   }
 }
 
-const KNOWN_FIELDS = ['chart', 'repo'] as const;
+const KNOWN_FIELDS = ['chart', 'repo', 'version'] as const;
 
 export class HelmChart {
   readonly chart: ChartRef;
@@ -69,7 +77,10 @@ export class HelmChart {
     if (!fields.chart) {
       throw new Error('HelmChart requires a "chart" field');
     }
-    this.chart = parseChartRef(fields.chart, fields.repo);
+    this.chart = parseChartRef(fields.chart, fields.repo, fields.version);
+    if (fields.version && this.chart.kind !== 'reference') {
+      throw new Error(`HelmChart "version" is only valid for a reference chart (repo/name or name+repo), not a "${this.chart.kind}" source`);
+    }
     validateChartExists(this.chart);
   }
 }

@@ -9,6 +9,8 @@ import { HelmRelease } from './helm/helm_release.js';
 import { Deployment } from './k8s/deployment.js';
 import { Service } from './k8s/service.js';
 import { Pod } from './k8s/pod.js';
+import { ConfigMap } from './k8s/configmap.js';
+import { ReplicaSet } from './k8s/replicaset.js';
 import { RestEndpoint } from './http/rest_endpoint.js';
 import { HttpResponse } from './http/http_request.js';
 import { CommandResult } from './run_command.js';
@@ -24,6 +26,8 @@ export class World extends CucumberWorld {
   deployments = new Map<string, Deployment>();
   services = new Map<string, Service>();
   pods = new Map<string, Pod>();
+  configMaps = new Map<string, ConfigMap>();
+  replicaSets = new Map<string, ReplicaSet>();
   restEndpoints = new Map<string, RestEndpoint>();
   capturedValues = new Map<string, string>();
   lastError?: Error;

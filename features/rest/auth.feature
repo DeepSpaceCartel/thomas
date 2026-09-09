@@ -120,6 +120,5 @@ Feature: BDD Framework for the rest-api fixture's five auth methods
       | response_types_supported[0] | equals | code                      |
       | id_token_signing_alg_values_supported[0] | equals | RS256              |
 
-    When I uninstall HelmRelease known as "<AuthRelease>" with:
-      | OPTION | VALUE |
+    When I uninstall HelmRelease known as "<AuthRelease>"
     Then the command exited with 0

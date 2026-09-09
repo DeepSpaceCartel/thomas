@@ -1,7 +1,9 @@
 # Helm
 
 Real `helm`/`tar` invocations against real (small, public) chart
-repositories and a real cluster — nothing here is mocked. See [BDD
+repositories and a real cluster — nothing here is mocked (the `tar`
+calls genuinely list/extract files from local chart archives; see
+[Aliases: File](ALIASES.md#file)). See [BDD
 conventions](bdd-conventions.md) for the "define, then act" pattern and
 table shapes these steps build on.
 
@@ -16,45 +18,31 @@ manage dependencies.
 Given Directory known as "<Alias>":
 ```
 
-Registers a local filesystem path, checked to really exist at
-construction time. The base object every other Helm step in this
-section either wraps directly (`HelmChart`) or operates on.
-
-=== "Minimal"
-
-    ```gherkin
-    Given Directory known as "<ChartsDirectory>":
-      | PROPERTY | VALUE    |
-      | path     | ./charts |
-    ```
-
-=== "In practice"
-
-    ```gherkin
-    Given Directory known as "<ChartsDirectory>":
-      | PROPERTY | VALUE    |
-      | path     | ./charts |
-    When I index Directory known as "<ChartsDirectory>" with:
-      | OPTION | VALUE |
-    Then the command exited with 0
-    ```
+See [Aliases: Directory](ALIASES.md#directory) for the construction
+shape and validation behavior. The base object every other Helm step in
+this section either wraps directly (`HelmChart`) or operates on.
 
 ### Index a Directory
 
 ```gherkin
+When I index Directory known as "<Alias>"
 When I index Directory known as "<Alias>" with:
 ```
 
 Runs `helm repo index <path>` against the directory.
 
 ```gherkin
-When I index Directory known as "<ChartsDirectory>" with:
-  | OPTION | VALUE |
+Given Directory known as "<ChartsDirectory>":
+  | PROPERTY | VALUE    |
+  | path     | ./charts |
+When I index Directory known as "<ChartsDirectory>"
+Then the command exited with 0
 ```
 
 ### Lint a Directory
 
 ```gherkin
+When I lint Directory known as "<Alias>"
 When I lint Directory known as "<Alias>" with:
 ```
 
@@ -62,27 +50,15 @@ Runs `helm lint <path>`. Only accepts a local path — a `Directory`,
 never a `HelmChart` (which can also be a URL/OCI/reference that `lint`
 can't operate on).
 
-=== "Minimal"
-
-    ```gherkin
-    When I lint Directory known as "<NginxChartDirectory>" with:
-      | OPTION | VALUE |
-    ```
-
-=== "In practice"
-
-    ```gherkin
-    Given Directory known as "<NginxChartDirectory>":
-      | PROPERTY | VALUE          |
-      | path     | ./charts/nginx |
-    When I lint Directory known as "<NginxChartDirectory>" with:
-      | OPTION | VALUE |
-    Then the command exited with 0:
-      | SOURCE | CONDITION | VALUE                                |
-      | STDOUT | contains  | 1 chart(s) linted, 0 chart(s) failed |
-    ```
-
-    (`features/helm/directory.feature`)
+```gherkin
+Given Directory known as "<NginxChartDirectory>":
+  | PROPERTY | VALUE          |
+  | path     | ./charts/nginx |
+When I lint Directory known as "<NginxChartDirectory>"
+Then the command exited with 0:
+  | SOURCE | CONDITION | VALUE                                |
+  | STDOUT | contains  | 1 chart(s) linted, 0 chart(s) failed |
+```
 
 ### Package a Directory
 
@@ -94,8 +70,8 @@ Runs `helm package <path>`, same local-path-only restriction as `lint`.
 
 ```gherkin
 When I package Directory known as "<NginxChartDirectory>" with:
-  | OPTION | VALUE  |
-  | -d     | .cache |
+  | OPTION        | VALUE  |
+  | --destination | .cache |
 Then the command exited with 0:
   | SOURCE | CONDITION | VALUE                       |
   | STDOUT | contains  | Successfully packaged chart |
@@ -118,6 +94,7 @@ When I purge Directory known as "<DownloadsDirectory>"
 ### Manage Directory Dependencies
 
 ```gherkin
+When I {build|list|update} dependencies for Directory known as "<Alias>"
 When I {build|list|update} dependencies for Directory known as "<Alias>" with:
 ```
 
@@ -125,125 +102,18 @@ Runs `helm dependency build|list|update <path>` against a chart
 directory declaring real dependencies.
 
 ```gherkin
-When I list dependencies for Directory known as "<DependencyChartDirectory>" with:
-  | OPTION | VALUE |
+When I list dependencies for Directory known as "<DependencyChartDirectory>"
 Then the command exited with 0:
   | SOURCE | CONDITION | VALUE   |
   | STDOUT | contains  | missing |
-When I update dependencies for Directory known as "<DependencyChartDirectory>" with:
-  | OPTION | VALUE |
+When I update dependencies for Directory known as "<DependencyChartDirectory>"
 Then the command exited with 0:
   | SOURCE | CONDITION | VALUE           |
   | STDOUT | contains  | Saving 1 charts |
 ```
 
-(`features/helm/dependency.feature`, against `charts/test-dependency/`,
-a fixture that exists solely to exercise this step)
-
-## Chart & Repo Sources
-
-`File`, `URL`, and `OCIArtifact` have no `helm` commands of their own —
-they exist purely to be referenced as a `HelmChart`'s `chart`/`repo`
-field (`URL` also feeds a `HelmRepo`'s `url`). `Directory` is the fourth
-source kind but gets its own group above, since it also has real
-commands (`index`/`lint`/`package`/dependency management).
-
-### Define a File
-
-```gherkin
-Given File known as "<Alias>":
-```
-
-A local file path, checked to really exist at construction time —
-typically a packaged chart archive (`.tgz`) used as a `HelmChart`'s
-`local-archive` source.
-
-=== "Basic"
-
-    ```gherkin
-    Given File known as "<NginxChartFile>":
-      | PROPERTY | VALUE                    |
-      | path     | ./charts/nginx-0.1.0.tgz |
-    ```
-
-=== "Advanced"
-
-    ```gherkin
-    Given File known as "<NginxChartFile>":
-      | PROPERTY | VALUE                    |
-      | path     | ./charts/nginx-0.1.0.tgz |
-    And Helm Chart known as "<LocalArchiveNginxHelmChart>":
-      | PROPERTY | VALUE            |
-      | chart    | <NginxChartFile> |
-    ```
-
-    A chart sourced from a local archive instead of a directory
-    (`features/helm/helm-chart.feature`).
-
-### Define a URL
-
-```gherkin
-Given URL known as "<Alias>":
-```
-
-An `http(s)://` URL, validated as well-formed at construction time.
-Used as a `HelmChart`'s `url` source or a `HelmRepo`'s `url`.
-
-=== "Basic"
-
-    ```gherkin
-    Given URL known as "<BitnamiRepoUrl>":
-      | PROPERTY | VALUE                              |
-      | value    | https://charts.bitnami.com/bitnami |
-    ```
-
-=== "Advanced"
-
-    ```gherkin
-    Given URL known as "<BitnamiRepoUrl>":
-      | PROPERTY | VALUE                              |
-      | value    | https://charts.bitnami.com/bitnami |
-    And Helm Repo known as "<BitnamiHelmRepo>":
-      | PROPERTY | VALUE            |
-      | name     | bitnami          |
-      | url      | <BitnamiRepoUrl> |
-    ```
-
-    The same `URL` alias feeding a `HelmRepo`
-    (`features/helm/helm-chart.feature`).
-
-### Define an OCIArtifact
-
-```gherkin
-Given OCIArtifact known as "<Alias>":
-```
-
-An OCI registry reference (`oci://...`), validated for the correct
-scheme at construction time. Used as a `HelmChart`'s `oci` source.
-
-=== "Basic"
-
-    ```gherkin
-    Given OCIArtifact known as "<NginxOciArtifact>":
-      | PROPERTY | VALUE                                          |
-      | ref      | oci://registry-1.docker.io/bitnamicharts/nginx |
-    ```
-
-=== "Advanced"
-
-    ```gherkin
-    Given OCIArtifact known as "<NginxOciArtifact>":
-      | PROPERTY | VALUE                                          |
-      | ref      | oci://registry-1.docker.io/bitnamicharts/nginx |
-    And Helm Chart known as "<OciNginxHelmChart>":
-      | PROPERTY | VALUE              |
-      | chart    | <NginxOciArtifact> |
-    And Helm Chart known as "<OciNginxHelmChart>" has:
-      | KEY     | CONDITION | VALUE   |
-      | version | equals    | 25.1.10 |
-    ```
-
-    (`features/helm/helm-chart.feature`)
+Exercised against `charts/test-dependency/`, a fixture that exists
+solely to declare a real dependency.
 
 ## HelmChart
 
@@ -261,8 +131,9 @@ Registers a chart reference — a local directory, a local archive, a
 URL, an OCI artifact, or a `repo/name` reference (optionally built from
 a bare name plus a separate `repo` field). `chart`/`repo` fields accept
 either a literal value or a `<Directory>`/`<File>`/`<URL>`/`<OCIArtifact>`
-alias (see above). All five source kinds, each pulled from a real
-scenario in `features/helm/helm-chart.feature`:
+alias — see [Aliases](ALIASES.md) for how each of those four is itself
+constructed. All five source kinds, each pulled from a real scenario in
+`features/helm/helm-chart.feature`:
 
 === "Local Directory"
 
@@ -358,6 +229,7 @@ Then the command exited with 0:
 ### Show HelmChart Info
 
 ```gherkin
+When I show {chart|values|readme|crds|all} for Helm Chart known as "<Alias>"
 When I show {chart|values|readme|crds|all} for Helm Chart known as "<Alias>" with:
 ```
 
@@ -367,8 +239,7 @@ markdown and `all` has no `-o` flag at all — both use the raw-text `the
 command exited with {int}:` form instead.
 
 ```gherkin
-When I show values for Helm Chart known as "<LocalNginxHelmChart>" with:
-  | OPTION | VALUE |
+When I show values for Helm Chart known as "<LocalNginxHelmChart>"
 Then the command result data has:
   | KEY          | CONDITION | VALUE |
   | replicaCount | equals    | 1     |
@@ -400,11 +271,10 @@ Registers a repository's real `name`/`url` — pure construction, no
       | url      | <BitnamiRepoUrl> |
     ```
 
-=== "Advanced"
+=== "Then referenced by name from a HelmChart"
 
     ```gherkin
-    When I add Helm Repo known as "<BitnamiHelmRepo>" with:
-      | OPTION | VALUE |
+    When I add Helm Repo known as "<BitnamiHelmRepo>"
     And Helm Chart known as "<ReferenceNginxHelmChart>":
       | PROPERTY | VALUE         |
       | chart    | bitnami/nginx |
@@ -418,6 +288,7 @@ Registers a repository's real `name`/`url` — pure construction, no
 ### Add a HelmRepo
 
 ```gherkin
+When I add Helm Repo known as "<Alias>"
 When I add Helm Repo known as "<Alias>" with:
 ```
 
@@ -437,14 +308,14 @@ Then the command exited with 0:
 ### Remove a HelmRepo
 
 ```gherkin
+When I remove Helm Repo known as "<Alias>"
 When I remove Helm Repo known as "<Alias>" with:
 ```
 
 Runs `helm repo remove <name>`.
 
 ```gherkin
-When I remove Helm Repo known as "<SandboxRemoveExampleRepo>" with:
-  | OPTION | VALUE |
+When I remove Helm Repo known as "<SandboxRemoveExampleRepo>"
 Then the command exited with 0:
   | SOURCE | CONDITION | VALUE                                    |
   | STDOUT | contains  | has been removed from your repositories |
@@ -453,6 +324,7 @@ Then the command exited with 0:
 ### Update a HelmRepo
 
 ```gherkin
+When I update Helm Repo known as "<Alias>"
 When I update Helm Repo known as "<Alias>" with:
 ```
 
@@ -468,6 +340,7 @@ Then the command exited with 0
 ### List HelmRepos
 
 ```gherkin
+When I list Helm Repo
 When I list Helm Repo with:
 ```
 
@@ -475,8 +348,8 @@ Runs `helm repo list` (no alias — lists every registered repo).
 
 ```gherkin
 When I list Helm Repo with:
-  | OPTION | VALUE |
-  | -o     | yaml  |
+  | OPTION   | VALUE |
+  | --output | yaml  |
 Then the command result data has:
   | KEY      | CONDITION | VALUE   |
   | [*].name | equals    | bitnami |
@@ -510,6 +383,7 @@ real `Deployment`/`Service`/`Pod` a `HelmRelease` creates once installed.
 ### Manage a HelmRelease
 
 ```gherkin
+When I {install|upgrade|uninstall|rollback|status|history|test} HelmRelease known as "<Alias>"
 When I {install|upgrade|uninstall|rollback|status|history|test} HelmRelease known as "<Alias>" with:
 ```
 
@@ -521,24 +395,75 @@ Only `install`/`upgrade` take a chart ref; the rest only ever take
     (`cannot re-use a name that is still in use`) — that's real, correct
     Helm behavior, not a framework limitation. The rerun-safe idiom used
     throughout this suite is `upgrade` with `--install`/`--atomic` set
-    (see the "Rerun-safe install" tab below).
+    (see the "upgrade" tab below).
 
 `--atomic` blocks until the rollout is healthy (or rolls back on
 failure) — this is why [Kubernetes](KUBECTL.md) discovery right after an
-`--atomic` upgrade never needs to poll.
+`--atomic` upgrade never needs to poll. Every example below is pulled
+verbatim from `features/helm/release.feature`, all against the same
+`<NginxRelease>` unless noted:
 
-=== "Rerun-safe install"
+=== "install"
+
+    ```gherkin
+    When I install HelmRelease known as "<DuplicateRelease>" with:
+      | OPTION             | VALUE |
+      | --create-namespace | True  |
+    Then the command exited with 0
+    ```
+
+    A second `install` of the same name is the one place this suite
+    deliberately exercises the non-idempotency above:
+    ```gherkin
+    When I install HelmRelease known as "<DuplicateRelease>"
+    Then the command exited with 1:
+      | SOURCE | CONDITION | VALUE                |
+      | STDERR | contains  | cannot re-use a name |
+    ```
+
+=== "upgrade"
 
     ```gherkin
     When I upgrade HelmRelease known as "<NginxRelease>" with:
       | OPTION             | VALUE |
       | --install          | True  |
-      | --atomic            | True  |
-      | --create-namespace  | True  |
+      | --atomic           | True  |
+      | --create-namespace | True  |
     Then the command exited with 0
     ```
 
-=== "Rolling back"
+=== "status"
+
+    ```gherkin
+    When I status HelmRelease known as "<NginxRelease>" with:
+      | OPTION   | VALUE |
+      | --output | yaml  |
+    Then the command result data has:
+      | KEY         | CONDITION | VALUE    |
+      | info.status | equals    | deployed |
+    ```
+
+=== "history"
+
+    ```gherkin
+    When I history HelmRelease known as "<NginxRelease>" with:
+      | OPTION   | VALUE |
+      | --output | yaml  |
+    Then the command result data has:
+      | KEY        | CONDITION | VALUE    |
+      | [*].status | equals    | deployed |
+    ```
+
+=== "test"
+
+    ```gherkin
+    When I test HelmRelease known as "<NginxRelease>"
+    Then the command exited with 0:
+      | SOURCE | CONDITION | VALUE     |
+      | STDOUT | contains  | Succeeded |
+    ```
+
+=== "rollback"
 
     ```gherkin
     When I upgrade HelmRelease known as "<RollbackRelease>" with:
@@ -553,29 +478,93 @@ failure) — this is why [Kubernetes](KUBECTL.md) discovery right after an
       | STDOUT | contains  | Rollback was a success |
     ```
 
-    (`features/helm/release.feature`)
+=== "uninstall"
+
+    ```gherkin
+    When I uninstall HelmRelease known as "<NginxRelease>"
+    Then the command exited with 0:
+      | SOURCE | CONDITION | VALUE       |
+      | STDOUT | contains  | uninstalled |
+    ```
 
 ### Get HelmRelease Info
 
 ```gherkin
+When I get {all|hooks|manifest|metadata|notes|values} for HelmRelease known as "<Alias>"
 When I get {all|hooks|manifest|metadata|notes|values} for HelmRelease known as "<Alias>" with:
 ```
 
-Runs `helm get <sub> <name> -n <namespace>`.
+Runs `helm get <sub> <name> -n <namespace>`. `values`/`metadata` output
+YAML (assert with `the command result data has:`); the rest use the
+raw-text `the command exited with {int}:` form. Every example below is
+pulled verbatim from `features/helm/release.feature`, against the same
+`<NginxRelease>`:
 
-```gherkin
-When I get values for HelmRelease known as "<NginxRelease>" with:
-  | OPTION | VALUE |
-  | -a     | True  |
-  | -o     | yaml  |
-Then the command result data has:
-  | KEY          | CONDITION | VALUE |
-  | replicaCount | equals    | 1     |
-```
+=== "values"
+
+    ```gherkin
+    When I get values for HelmRelease known as "<NginxRelease>" with:
+      | OPTION   | VALUE |
+      | --all    | True  |
+      | --output | yaml  |
+    Then the command result data has:
+      | KEY          | CONDITION | VALUE |
+      | replicaCount | equals    | 1     |
+    ```
+
+=== "metadata"
+
+    ```gherkin
+    When I get metadata for HelmRelease known as "<NginxRelease>" with:
+      | OPTION   | VALUE |
+      | --output | yaml  |
+    Then the command result data has:
+      | KEY   | CONDITION | VALUE                 |
+      | name  | equals    | sandbox-nginx-release |
+      | chart | equals    | nginx                 |
+    ```
+
+=== "hooks"
+
+    ```gherkin
+    When I get hooks for HelmRelease known as "<NginxRelease>"
+    Then the command exited with 0:
+      | SOURCE | CONDITION | VALUE               |
+      | STDOUT | contains  | helm.sh/hook": test |
+    ```
+
+=== "manifest"
+
+    ```gherkin
+    When I get manifest for HelmRelease known as "<NginxRelease>"
+    Then the command exited with 0:
+      | SOURCE | CONDITION | VALUE                                  |
+      | STDOUT | contains  | # Source: nginx/templates/service.yaml |
+    ```
+
+=== "notes"
+
+    ```gherkin
+    When I get notes for HelmRelease known as "<NginxRelease>"
+    Then the command exited with 0:
+      | SOURCE | CONDITION | VALUE      |
+      | STDOUT | contains  | Access it: |
+    ```
+
+=== "all"
+
+    ```gherkin
+    When I get all for HelmRelease known as "<NginxRelease>"
+    Then the command exited with 0:
+      | SOURCE | CONDITION | VALUE                                  |
+      | STDOUT | contains  | NOTES:                                 |
+      | STDOUT | contains  | # Source: nginx/templates/service.yaml |
+    ```
 
 ### List HelmReleases
 
 ```gherkin
+When I list HelmRelease
 When I list HelmRelease with:
 ```
 
@@ -583,9 +572,9 @@ Runs `helm list` (no alias — lists releases matching the given options).
 
 ```gherkin
 When I list HelmRelease with:
-  | OPTION | VALUE              |
-  | -n     | thomas-helm-test |
-  | -o     | yaml               |
+  | OPTION      | VALUE            |
+  | --namespace | thomas-helm-test |
+  | --output    | yaml             |
 Then the command result data has:
   | KEY      | CONDITION | VALUE                 |
   | [*].name | equals    | sandbox-nginx-release |

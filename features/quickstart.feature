@@ -1,60 +1,3 @@
----
-hide:
-  navigation:
----
-
-# Thomas
-
-`Thomas` is a real (no mocks) BDD harness for Kubernetes-native applications.
-It uses Cucumber and TypeScript to exercise Helm, `kubectl`, and HTTP APIs
-without mocks.
-
-The harness is designed around readable scenarios and observable behavior:
-construct an object, perform an explicit action, then assert on the real
-command or response.
-
-## What it covers
-
-<div class="grid cards" markdown>
-
--   :material-anchor:{ .lg .middle } **Helm**
-
-    ---
-
-    Charts, repositories, releases, and dependencies — real `helm`
-    invocations, never mocked.
-
-    [:octicons-arrow-right-24: Helm reference](HELM.md)
-
--   :material-kubernetes:{ .lg .middle } **Kubernetes**
-
-    ---
-
-    Deployment/Service/Pod discovery by real labels, and polling for
-    eventually consistent cluster state.
-
-    [:octicons-arrow-right-24: Kubernetes reference](KUBECTL.md)
-
--   :material-api:{ .lg .middle } **REST**
-
-    ---
-
-    Real HTTP requests: authentication, uploads, downloads, and JSON
-    APIs against a deployed app.
-
-    [:octicons-arrow-right-24: REST reference](REST.md)
-
-</div>
-
-## Quick Start
-
-The shape of a scenario you'd write against your own chart: deploy it
-from a local folder, verify it in Kubernetes, then make a real REST
-check against it — three domains, one pattern throughout. This is the
-complete, real, passing `features/quickstart.feature`, using this
-repo's own `charts/nginx` fixture as a stand-in for yours:
-
-```gherkin
 Feature: Quick Start - the shape of a scenario a consuming project writes
   As a developer evaluating Thomas
   I want one scenario that deploys a chart from a local folder, verifies
@@ -71,13 +14,13 @@ Feature: Quick Start - the shape of a scenario a consuming project writes
       | PROPERTY | VALUE          |
       | path     | ./charts/nginx |
     And Helm Chart known as "<MyHelmChart>":
-      | PROPERTY | VALUE              |
+      | PROPERTY | VALUE               |
       | chart    | <MyChartDirectory> |
     And HelmRelease known as "<MyRelease>":
-      | PROPERTY  | VALUE              |
-      | chart     | <MyHelmChart>      |
+      | PROPERTY  | VALUE             |
+      | chart     | <MyHelmChart>     |
       | name      | sandbox-quickstart |
-      | namespace | thomas-helm-test   |
+      | namespace | thomas-helm-test  |
     When I upgrade HelmRelease known as "<MyRelease>" with:
       | OPTION             | VALUE |
       | --install          | True  |
@@ -109,12 +52,3 @@ Feature: Quick Start - the shape of a scenario a consuming project writes
 
     When I uninstall HelmRelease known as "<MyRelease>"
     Then the command exited with 0
-```
-
-`namespace: thomas-helm-test` here is this repo's own dedicated test
-namespace, not a requirement — once you [install Thomas into your own
-project](installing.md), point that field (and the release name) at
-whatever's real for you. See [BDD conventions](bdd-conventions.md) for
-the full "define, then act" pattern behind every step above, and
-[Helm](HELM.md)/[Kubernetes](KUBECTL.md)/[REST](REST.md) for the
-complete reference each one belongs to.

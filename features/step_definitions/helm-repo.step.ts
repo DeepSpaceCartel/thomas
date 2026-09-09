@@ -25,21 +25,36 @@ function getRepo(world: World, alias: string): HelmRepo {
   return repo;
 }
 
+When('I add Helm Repo known as {string}', function (this: World, alias: string) {
+  const repo = getRepo(this, alias);
+  this.lastCommandResult = runCommand('helm', ['repo', 'add', repo.name, repo.url]);
+});
 When('I add Helm Repo known as {string} with:', function (this: World, alias: string, table: DataTable) {
   const repo = getRepo(this, alias);
   this.lastCommandResult = runCommand('helm', ['repo', 'add', repo.name, repo.url, ...buildArgs(table)]);
 });
 
+When('I remove Helm Repo known as {string}', function (this: World, alias: string) {
+  const repo = getRepo(this, alias);
+  this.lastCommandResult = runCommand('helm', ['repo', 'remove', repo.name]);
+});
 When('I remove Helm Repo known as {string} with:', function (this: World, alias: string, table: DataTable) {
   const repo = getRepo(this, alias);
   this.lastCommandResult = runCommand('helm', ['repo', 'remove', repo.name, ...buildArgs(table)]);
 });
 
+When('I update Helm Repo known as {string}', function (this: World, alias: string) {
+  const repo = getRepo(this, alias);
+  this.lastCommandResult = runCommand('helm', ['repo', 'update', repo.name]);
+});
 When('I update Helm Repo known as {string} with:', function (this: World, alias: string, table: DataTable) {
   const repo = getRepo(this, alias);
   this.lastCommandResult = runCommand('helm', ['repo', 'update', repo.name, ...buildArgs(table)]);
 });
 
+When('I list Helm Repo', function (this: World) {
+  this.lastCommandResult = runCommand('helm', ['repo', 'list']);
+});
 When('I list Helm Repo with:', function (this: World, table: DataTable) {
   this.lastCommandResult = runCommand('helm', ['repo', 'list', ...buildArgs(table)]);
 });

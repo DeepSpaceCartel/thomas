@@ -10,6 +10,10 @@ function check(actual: unknown, condition: string, expected: string): CheckResul
       return actual === undefined
         ? { pass: true, reason: '' }
         : { pass: false, reason: `expected field to be undefined, got "${actualString}"` };
+    case 'exists':
+      return actual !== undefined
+        ? { pass: true, reason: '' }
+        : { pass: false, reason: 'expected field to exist, but it was undefined' };
     case 'equals':
       return actualString === expected
         ? { pass: true, reason: '' }
@@ -26,9 +30,34 @@ function check(actual: unknown, condition: string, expected: string): CheckResul
       return actualString !== expected
         ? { pass: true, reason: '' }
         : { pass: false, reason: `expected value to not equal "${expected}", but it did` };
+    case 'gt':
+    case 'gte':
+    case 'lt':
+    case 'lte':
+      return checkNumeric(actualString, condition, expected);
     default:
-      return { pass: false, reason: `unknown condition "${condition}" (known conditions: equals, contains, icontains, undefined, not_equals)` };
+      return {
+        pass: false,
+        reason: `unknown condition "${condition}" (known conditions: equals, contains, icontains, undefined, exists, not_equals, gt, gte, lt, lte)`,
+      };
   }
+}
+
+// The one family of conditions that compares numbers, not strings - every
+// other condition in this file does plain string comparison. Both sides
+// go through Number() (not parseFloat/parseInt) so a non-numeric value
+// (e.g. a status.phase string) fails loudly with a clear reason instead
+// of silently comparing NaNs (which are never equal, so a naive numeric
+// comparison would just always report "not pass" with no explanation).
+function checkNumeric(actualString: string, condition: 'gt' | 'gte' | 'lt' | 'lte', expected: string): CheckResult {
+  const actualNum = Number(actualString);
+  const expectedNum = Number(expected);
+  if (Number.isNaN(actualNum) || Number.isNaN(expectedNum)) {
+    return { pass: false, reason: `"${condition}" needs numeric values, got actual="${actualString}" expected="${expected}"` };
+  }
+  const pass =
+    condition === 'gt' ? actualNum > expectedNum : condition === 'gte' ? actualNum >= expectedNum : condition === 'lt' ? actualNum < expectedNum : actualNum <= expectedNum;
+  return pass ? { pass: true, reason: '' } : { pass: false, reason: `expected ${actualNum} ${condition} ${expectedNum}, was not` };
 }
 
 // "not_equals" is the one condition where an array check must be universal

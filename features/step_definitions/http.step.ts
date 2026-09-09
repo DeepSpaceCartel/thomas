@@ -49,24 +49,24 @@ Given('the query parameter {string} from response header {string} is known as {s
 // No-table variant for the common case of a request with no headers/
 // query/body - "with:" + an empty TYPE|KEY|VALUE table is pure noise for
 // a bare GET.
-When('I send a {word} request to RestEndpoint known as {string} path {string}', function (this: World, method: string, alias: string, path: string) {
+When('I send a {httpMethod} request to RestEndpoint known as {string} path {string}', function (this: World, method: string, alias: string, path: string) {
   return sendHttpRequest(this, getRestEndpoint(this, alias), method, path);
 });
 
 When(
-  'I send a {word} request to RestEndpoint known as {string} path {string} with:',
+  'I send a {httpMethod} request to RestEndpoint known as {string} path {string} with:',
   function (this: World, method: string, alias: string, path: string, table: DataTable) {
     return sendHttpRequest(this, getRestEndpoint(this, alias), method, path, table);
   },
 );
 
-When('I attempt to send a {word} request to RestEndpoint known as {string} path {string}', function (this: World, method: string, alias: string, path: string) {
+When('I attempt to send a {httpMethod} request to RestEndpoint known as {string} path {string}', function (this: World, method: string, alias: string, path: string) {
   const endpoint = getRestEndpoint(this, alias);
   return attempt(this, () => sendHttpRequest(this, endpoint, method, path));
 });
 
 When(
-  'I attempt to send a {word} request to RestEndpoint known as {string} path {string} with:',
+  'I attempt to send a {httpMethod} request to RestEndpoint known as {string} path {string} with:',
   function (this: World, method: string, alias: string, path: string, table: DataTable) {
     const endpoint = getRestEndpoint(this, alias);
     return attempt(this, () => sendHttpRequest(this, endpoint, method, path, table));

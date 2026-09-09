@@ -28,10 +28,14 @@ construction (no live check) — the first real validation is the paired
 ## Sending a request
 
 ```gherkin
-When I send a {word} request to RestEndpoint known as {string} path {string}
-When I send a {word} request to RestEndpoint known as {string} path {string} with:
+When I send a {httpMethod} request to RestEndpoint known as {string} path {string}
+When I send a {httpMethod} request to RestEndpoint known as {string} path {string} with:
 ```
-(`{word}` is the HTTP method.) Both have `I attempt to send a ...`
+`{httpMethod}` is a real Cucumber custom parameter type
+(`support/http/http_method.ts`) that only matches `GET`/`POST`/`PUT`/
+`PATCH`/`DELETE` — the exact set `charts/rest-api/` exposes and every
+scenario exercises. An unlisted method fails to match any step at all,
+rather than being sent and failing at the HTTP layer. Both have `I attempt to send a ...`
 siblings for genuine network-failure negative tests. `path` and every
 table `VALUE` cell go through embedded `<...>`-substitution against
 captured values (see below) before the request is built.

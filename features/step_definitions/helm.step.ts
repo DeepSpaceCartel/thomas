@@ -77,6 +77,10 @@ function getChart(world: World, alias: string): HelmChart {
 // after - real usage, confirmed by actually running it (a table-supplied
 // "test-nginx" ended up parsed as CHART, chart's own path as a stray extra
 // arg, until this was reordered).
+When('I template Helm Chart known as {string}', function (this: World, alias: string) {
+  const chart = getChart(this, alias);
+  this.lastCommandResult = runCommand('helm', ['template', ...chartRefToArgs(chart.chart)]);
+});
 When('I template Helm Chart known as {string} with:', function (this: World, alias: string, table: DataTable) {
   const chart = getChart(this, alias);
   this.lastCommandResult = runCommand('helm', ['template', ...buildArgs(table), ...chartRefToArgs(chart.chart)]);
@@ -90,10 +94,16 @@ const SHOW_SUBCOMMANDS = ['chart', 'values', 'readme', 'crds', 'all'] as const;
 // dynamically-interpolated pattern (`` `I show ${sub} ...` `` inside a loop)
 // is invisible to it even though cucumber-js itself matches it fine at
 // runtime.
-When('I show {word} for Helm Chart known as {string} with:', function (this: World, sub: string, alias: string, table: DataTable) {
+function runShowSubcommand(this: World, sub: string, alias: string, extraArgs: string[]): void {
   if (!(SHOW_SUBCOMMANDS as readonly string[]).includes(sub)) {
     throw new Error(`Unknown "show" subcommand "${sub}" (known subcommands: ${SHOW_SUBCOMMANDS.join(', ')})`);
   }
   const chart = getChart(this, alias);
-  this.lastCommandResult = runCommand('helm', ['show', sub, ...buildArgs(table), ...chartRefToArgs(chart.chart)]);
+  this.lastCommandResult = runCommand('helm', ['show', sub, ...extraArgs, ...chartRefToArgs(chart.chart)]);
+}
+When('I show {word} for Helm Chart known as {string}', function (this: World, sub: string, alias: string) {
+  runShowSubcommand.call(this, sub, alias, []);
+});
+When('I show {word} for Helm Chart known as {string} with:', function (this: World, sub: string, alias: string, table: DataTable) {
+  runShowSubcommand.call(this, sub, alias, buildArgs(table));
 });

@@ -22,6 +22,10 @@ function getDirectory(world: World, alias: string): Directory {
   return dir;
 }
 
+When('I index Directory known as {string}', function (this: World, alias: string) {
+  const dir = getDirectory(this, alias);
+  this.lastCommandResult = runCommand('helm', ['repo', 'index', dir.path]);
+});
 When('I index Directory known as {string} with:', function (this: World, alias: string, table: DataTable) {
   const dir = getDirectory(this, alias);
   this.lastCommandResult = runCommand('helm', ['repo', 'index', dir.path, ...buildArgs(table)]);
@@ -29,11 +33,19 @@ When('I index Directory known as {string} with:', function (this: World, alias: 
 
 // `helm lint`/`helm package` only accept a local path - they operate on a
 // Directory, never a HelmChart (which can also be a URL/OCI/reference).
+When('I lint Directory known as {string}', function (this: World, alias: string) {
+  const dir = getDirectory(this, alias);
+  this.lastCommandResult = runCommand('helm', ['lint', dir.path]);
+});
 When('I lint Directory known as {string} with:', function (this: World, alias: string, table: DataTable) {
   const dir = getDirectory(this, alias);
   this.lastCommandResult = runCommand('helm', ['lint', dir.path, ...buildArgs(table)]);
 });
 
+When('I package Directory known as {string}', function (this: World, alias: string) {
+  const dir = getDirectory(this, alias);
+  this.lastCommandResult = runCommand('helm', ['package', dir.path]);
+});
 When('I package Directory known as {string} with:', function (this: World, alias: string, table: DataTable) {
   const dir = getDirectory(this, alias);
   this.lastCommandResult = runCommand('helm', ['package', dir.path, ...buildArgs(table)]);
@@ -51,10 +63,16 @@ const DEPENDENCY_VERBS = ['build', 'list', 'update'] as const;
 // see the comment on the equivalent `show` step in helm.step.ts for why:
 // VS Code's Cucumber plugin can't resolve a step text that's only built at
 // runtime inside a loop.
-When('I {word} dependencies for Directory known as {string} with:', function (this: World, verb: string, alias: string, table: DataTable) {
+function runDependencyVerb(this: World, verb: string, alias: string, extraArgs: string[]): void {
   if (!(DEPENDENCY_VERBS as readonly string[]).includes(verb)) {
     throw new Error(`Unknown "dependency" verb "${verb}" (known verbs: ${DEPENDENCY_VERBS.join(', ')})`);
   }
   const dir = getDirectory(this, alias);
-  this.lastCommandResult = runCommand('helm', ['dependency', verb, dir.path, ...buildArgs(table)]);
+  this.lastCommandResult = runCommand('helm', ['dependency', verb, dir.path, ...extraArgs]);
+}
+When('I {word} dependencies for Directory known as {string}', function (this: World, verb: string, alias: string) {
+  runDependencyVerb.call(this, verb, alias, []);
+});
+When('I {word} dependencies for Directory known as {string} with:', function (this: World, verb: string, alias: string, table: DataTable) {
+  runDependencyVerb.call(this, verb, alias, buildArgs(table));
 });

@@ -40,31 +40,51 @@ Feature: BDD Framework for real k8s resources created by a Helm Release
       | app.kubernetes.io/instance | sandbox-nginx-k8s-release |
 
     When I get Deployment known as "<NginxDeployment>" with:
-      | OPTION | VALUE |
-      | -o     | json  |
+      | OPTION   | VALUE |
+      | --output | json  |
     Then the command result data has:
       | KEY                                          | CONDITION | VALUE |
       | status.readyReplicas                         | equals    | 1     |
+      | status.readyReplicas                         | gte       | 1     |
       | status.availableReplicas                     | equals    | 1     |
       | spec.replicas                                | equals    | 1     |
+      | spec.replicas                                | gt        | 0     |
       | metadata.labels."app.kubernetes.io/version"   | equals    | 1.27  |
 
     When I get Service known as "<NginxService>" with:
-      | OPTION | VALUE |
-      | -o     | json  |
+      | OPTION   | VALUE |
+      | --output | json  |
     Then the command result data has:
       | KEY                                          | CONDITION | VALUE      |
       | spec.ports[0].port                           | equals    | 80         |
       | spec.type                                    | equals    | ClusterIP  |
       | metadata.labels."app.kubernetes.io/version"   | equals    | 1.27       |
 
-    When I get events for Deployment known as "<NginxDeployment>" with:
-      | OPTION | VALUE |
-    Then the command exited with 0
+    # Safe here specifically because this release is installed once and
+    # never upgraded/rolled back again in this scenario - see
+    # support/k8s/replicaset.ts's header comment for why a ReplicaSet
+    # lookup breaks against a release with more than one revision.
+    Given ReplicaSet known as "<NginxReplicaSet>":
+      | PROPERTY                   | VALUE                     |
+      | namespace                  | thomas-helm-test        |
+      | app.kubernetes.io/name     | nginx                     |
+      | app.kubernetes.io/instance | sandbox-nginx-k8s-release |
+    When I get ReplicaSet known as "<NginxReplicaSet>" with:
+      | OPTION   | VALUE |
+      | --output | json  |
+    Then the command result data has:
+      | KEY            | CONDITION | VALUE |
+      | status.replicas | equals   | 1     |
 
-    When I get logs for Deployment known as "<NginxDeployment>" with:
-      | OPTION | VALUE |
-    Then the command exited with 0
+    When I get events for Deployment known as "<NginxDeployment>"
+    Then the command exited with 0:
+      | SOURCE | CONDITION | VALUE                    |
+      | STDOUT | contains  | Scaled up replica set    |
+
+    When I get logs for Deployment known as "<NginxDeployment>"
+    Then the command exited with 0:
+      | SOURCE | CONDITION | VALUE                                      |
+      | STDOUT | contains  | Configuration complete; ready for start up |
 
     # A Pod, unlike Deployment/Service, has no such guarantee of already
     # being stable - so its readiness is polled, not checked once.
@@ -90,8 +110,7 @@ Feature: BDD Framework for real k8s resources created by a Helm Release
       | STDOUT | contains  | Started | pass    |
       | STDOUT | contains  | BackOff | fail    |
 
-    When I uninstall HelmRelease known as "<NginxRelease>" with:
-      | OPTION | VALUE |
+    When I uninstall HelmRelease known as "<NginxRelease>"
     Then the command exited with 0
 
   Scenario: Rejecting a label selector that matches no real resource
@@ -138,6 +157,5 @@ Feature: BDD Framework for real k8s resources created by a Helm Release
       | ErrImagePull     |
       | ImagePullBackOff |
 
-    When I uninstall HelmRelease known as "<BadImageRelease>" with:
-      | OPTION | VALUE |
+    When I uninstall HelmRelease known as "<BadImageRelease>"
     Then the command exited with 0

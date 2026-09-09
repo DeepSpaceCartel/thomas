@@ -22,8 +22,7 @@ Given Helm Repo known as "<BitnamiHelmRepo>":
   | PROPERTY | VALUE                              |
   | name     | bitnami                            |
   | url      | https://charts.bitnami.com/bitnami |
-When I add Helm Repo known as "<BitnamiHelmRepo>" with:
-  | OPTION | VALUE |
+When I add Helm Repo known as "<BitnamiHelmRepo>"
 Then the command exited with 0
 ```
 
@@ -37,7 +36,7 @@ string.
 | Tool | Reference | Covers |
 |---|---|---|
 | Helm | [`helm/REFERENCE.md`](helm/REFERENCE.md) | `Directory`, `HelmChart`, `HelmRepo`, `HelmRelease` — lint/package/template/show, repo add/remove/list, install/upgrade/rollback/get/list |
-| kubectl | [`kubectl/REFERENCE.md`](kubectl/REFERENCE.md) | `Deployment`, `Service`, `Pod` — label-selector discovery, get/events/logs, polling for eventually-consistent state |
+| kubectl | [`kubectl/REFERENCE.md`](kubectl/REFERENCE.md) | `Deployment`, `Service`, `Pod`, `ConfigMap`, `ReplicaSet` — label-selector discovery, get/events/logs, polling for eventually-consistent state |
 | HTTP | [`rest/REFERENCE.md`](rest/REFERENCE.md) | `RestEndpoint` — sending a request (headers/query/JSON/multipart), asserting the response, capturing a server-generated value for later use |
 
 Every one of those references cites real, runnable scenarios under

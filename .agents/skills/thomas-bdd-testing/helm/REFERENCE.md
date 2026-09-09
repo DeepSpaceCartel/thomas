@@ -33,13 +33,12 @@ When I {build|list|update} dependencies for Directory known as "<Alias>" with:
 `Directory`, never a `HelmChart` (which can also be a URL/OCI/reference
 that those subcommands can't operate on).
 
-**In practice** (`features/helm/directory.feature`):
+**In practice**:
 ```gherkin
 Given Directory known as "<NginxChartDirectory>":
   | PROPERTY | VALUE          |
   | path     | ./charts/nginx |
-When I lint Directory known as "<NginxChartDirectory>" with:
-  | OPTION | VALUE |
+When I lint Directory known as "<NginxChartDirectory>"
 Then the command exited with 0:
   | SOURCE | CONDITION | VALUE                                 |
   | STDOUT | contains  | 1 chart(s) linted, 0 chart(s) failed |
@@ -49,12 +48,15 @@ Dependency management (`features/helm/dependency.feature`) exercises
 `build`/`list`/`update` against `charts/test-dependency/`, a fixture
 that exists solely to declare a real dependency:
 ```gherkin
-When I update dependencies for Directory known as "<DependencyChartDirectory>" with:
-  | OPTION | VALUE |
+When I update dependencies for Directory known as "<DependencyChartDirectory>"
 Then the command exited with 0:
   | SOURCE | CONDITION | VALUE           |
   | STDOUT | contains  | Saving 1 charts |
 ```
+
+Every `... with:` step above also has a table-less sibling (`When I
+lint Directory known as "<Alias>"`, etc.) — use it whenever there are no
+real flags to pass, rather than a `with:` step with an empty table.
 
 ## HelmChart-scoped steps
 
@@ -129,8 +131,8 @@ Then the command exited with 0:
   | SOURCE | CONDITION | VALUE                               |
   | STDOUT | contains  | has been added to your repositories |
 And I list Helm Repo with:
-  | OPTION | VALUE |
-  | -o     | yaml  |
+  | OPTION   | VALUE |
+  | --output | yaml  |
 Then the command result data has:
   | KEY      | CONDITION | VALUE               |
   | [*].name | equals    | sandbox-add-example |
@@ -180,16 +182,20 @@ When I upgrade HelmRelease known as "<NginxRelease>" with:
   | --create-namespace  | True  |
 Then the command exited with 0
 When I status HelmRelease known as "<NginxRelease>" with:
-  | OPTION | VALUE |
-  | -o     | yaml  |
+  | OPTION   | VALUE |
+  | --output | yaml  |
 Then the command result data has:
   | KEY         | CONDITION | VALUE    |
   | info.status | equals    | deployed |
 ...
-When I uninstall HelmRelease known as "<NginxRelease>" with:
-  | OPTION | VALUE |
+When I uninstall HelmRelease known as "<NginxRelease>"
 Then the command exited with 0
 ```
+
+Every step above (verb dispatch, `get`, `list`, and every Helm-scoped
+step earlier in this file) has a table-less sibling — use it whenever
+there are no real flags to pass, rather than a `with:` step with an
+empty table.
 
 ## Fixture charts (`Thomas/charts/`)
 
