@@ -15,6 +15,24 @@ dependency:
 npm install github:DeepSpaceCartel/thomas
 ```
 
+## Installing the agent skill
+
+A separate, lighter-weight install: the
+[`thomas`](https://github.com/DeepSpaceCartel/thomas/blob/main/.agents/skills/thomas/SKILL.md)
+agent skill (the step catalog and extending methodology, written for an
+agent rather than for `tsx`/`cucumber`) can be pulled into another
+project's own skill directories via the [`skills` CLI](https://www.skills.sh/):
+
+```bash
+npx skills add DeepSpaceCartel/thomas
+```
+
+This complements the npm install above rather than replacing it — it
+gets an agent working in the consuming project the same guidance an
+agent gets working in this one, but assumes that project follows the
+same layout (`features/`, `charts/`, `docs/reference/*`) this skill's
+references point at.
+
 ## Wire up your own `cucumber.mjs`
 
 ```js
