@@ -23,9 +23,8 @@ uses strict mode so missing navigation entries and documentation warnings fail
 the build.
 
 The documentation site is configured in `mkdocs.yml`. Add new pages to the
-navigation when they are created. `docs/claude/plans/` holds internal
-agent-planning documents — useful project history, but deliberately not
-wired into the public navigation.
+navigation when they are created — every real page under `docs/` is
+currently wired into `nav:`, with no unlisted/escape-hatch content.
 
 The GitHub Actions workflow validates the site on changes. The Pages workflow
 publishes the site from pushes to `main`; pull requests only run validation.

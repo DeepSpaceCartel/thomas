@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { DataTable, defineParameterType } from '@cucumber/cucumber';
+import { logCommand } from './command_log.js';
 
 // OPTION | VALUE rows to argv: blank OPTION = positional; VALUE === 'True'
 // = boolean flag with no value token; VALUE === 'False' = row skipped
@@ -75,9 +76,11 @@ export interface CommandResult {
 // piped (not inherited) - same leak already fixed once for `helm pull`.
 export function runCommand(command: string, args: string[]): CommandResult {
   const { stdout, stderr, status } = spawnSync(command, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-  return {
+  const result = {
     EXIT_CODE: String(status ?? ''),
     STDOUT: (stdout ?? '').trim(),
     STDERR: (stderr ?? '').trim(),
   };
+  logCommand(command, args, result);
+  return result;
 }

@@ -18,8 +18,7 @@ spec:
         # ConfigMap's data changed - the pod template itself is
         # unchanged, so `helm upgrade` would silently no-op on the
         # running pod otherwise. Forces a real rollout whenever the app's
-        # actual source changes (same technique as charts/test-git-server
-        # at the repo root).
+        # actual source changes.
         checksum/app-config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
       containers:
@@ -100,7 +99,7 @@ spec:
         # Read-write, unlike the ConfigMap-mounted `app` volume - real
         # bytes uploaded via /files/* live here. emptyDir on purpose:
         # disposable test fixture, nothing here needs to survive a pod
-        # restart (same reasoning as charts/test-registry's storage).
+        # restart.
         - name: data
           emptyDir:
             sizeLimit: 256Mi

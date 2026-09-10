@@ -1,5 +1,6 @@
 """Deliberate, non-production test-control endpoints - see
-../../../features/rest/health.feature's readiness-flip scenario.
+../../../features/rest/health-{short,full}.feature's readiness-flip
+scenario.
 """
 
 from fastapi import APIRouter

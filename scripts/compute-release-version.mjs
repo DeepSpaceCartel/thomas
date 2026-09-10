@@ -12,6 +12,7 @@
 import { bumpMinorResetPatch } from './lib/semver.mjs';
 import { readVersion, writeVersion } from './lib/package-json.mjs';
 import { setOutput } from './lib/github-output.mjs';
+import { syncLockfile } from './lib/npm.mjs';
 
 function parseArgs(argv) {
   const args = { write: false, path: 'package.json' };
@@ -32,6 +33,7 @@ function main() {
 
   if (args.write) {
     writeVersion(args.path, release);
+    syncLockfile(args.path);
   }
 
   setOutput('version', release);

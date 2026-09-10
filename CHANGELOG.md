@@ -29,12 +29,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `npm test` (real `helm`/`kubectl`/HTTP against a real cluster) on a
   self-hosted runner living inside it, alongside the existing
   GitHub-hosted `--dry-run` tier that still runs for anyone. Gated to
-  `push: main` and same-repo `pull_request` only — never exposes the
-  cluster credential to a fork PR. `thomas-helm-test` is one fixed,
-  shared namespace, so runs are fully serialized; an hourly job sweeps
-  anything a crashed/timed-out run leaves behind. Both workflows are
-  inert until the cluster-side runner/RBAC/secret are provisioned
-  (tracked separately, not in this repo).
+  `push: main` and same-repo `pull_request` only — never runs for a
+  fork PR. `thomas-helm-test` is one fixed, shared namespace, so runs
+  are fully serialized; an hourly job sweeps anything a crashed/timed-out
+  run leaves behind. The runner pod authenticates via its own
+  namespace-scoped, in-cluster `ServiceAccount` identity (no kubeconfig
+  secret — `kubectl`/`helm` pick this up automatically). Both workflows
+  are inert until the cluster-side runner/RBAC are provisioned (tracked
+  separately, not in this repo).
+- **CI/dev tool-version convergence** (`scripts/tools.sh`,
+  `npm run install:tools`) — installs the real, current latest
+  `helm`/`kubectl`, used identically by local dev and both real-cluster
+  CI workflows (replacing `azure/setup-helm`/`azure/setup-kubectl`).
+  This is the real fix for the root cause behind a whole class of CI
+  failures: CI had silently drifted onto Helm v4 while this suite was
+  built/verified against v3, since the two environments resolved
+  "latest" through two different, independently-drifting mechanisms.
+- **Full command-output logging** (`features/support/command_log.ts`) —
+  every scenario's real `helm`/`kubectl` command output (full,
+  untruncated STDOUT/STDERR, not just Cucumber's own truncated failure
+  preview) is saved to its own file under `test-results/`, in every run
+  (local dev included). `real-tests.yml` publishes the whole directory
+  as a `scenario-logs` build artifact every run, pass or fail. This
+  directly paid for itself once: it surfaced a real RBAC permission
+  error that Cucumber's own truncated preview had hidden behind an
+  unrelated `--atomic` deprecation warning.
 
 ### Changed
 
@@ -65,6 +84,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `0.1.0` from before the automation existed. Now gated on the PR event
   itself (`merged == true` + a `release/v*` head branch) — file state is
   still cross-checked as defense in depth, but no longer the trigger.
+- **`docs.yaml` could fail with "Multiple artifacts named github-pages"
+  on a re-run** — `upload-pages-artifact` re-uploads under the same
+  fixed name on a new attempt without the previous attempt's artifact
+  being cleaned up, so `deploy-pages` found two and refused to pick
+  one. Now deletes any `github-pages` artifact from an earlier attempt
+  of the same run before uploading a fresh one (gated on
+  `github.run_attempt != '1'`, a no-op on a normal first-attempt run).
+- **`scripts/tools.sh` had a real, reproducible SIGPIPE bug** — piping
+  a live `curl`/`printf` process into `grep -m1` closes the pipe as
+  soon as `grep` matches, killing the still-writing upstream process
+  with a "curl: (23) Failure writing output to destination" error that
+  `pipefail` then turned into a whole-script abort. Fixed by writing to
+  a real file first and grepping that, never piping a live process into
+  a command that might exit before consuming the whole stream.
+- **Helm v3→v4 wording/flag changes** — confirmed against the real,
+  newly-installed latest Helm rather than assumed: `--fail-on-repo-update-fail`
+  is gone in v4 with no direct replacement (swapped the "Updating a Helm
+  Repo" scenarios and `docs/reference/HELM.md` to `--timeout`, a real
+  flag that still exists), and the real "duplicate install" error text
+  changed from "cannot re-use a name" to "cannot reuse a name" (updated
+  both `release-{full,short}.feature` assertions to match).
+- **`helm dependency build` needs its repo pre-registered on a fresh
+  machine** — `helm dependency update` resolves a `Chart.yaml`-declared
+  repo as a one-off "unmanaged" lookup and never registers it, so the
+  later `dependency build` (which trusts `Chart.lock` strictly) failed
+  with "no repository definition" on any environment that had never run
+  `helm repo add` for it before (i.e. every fresh CI runner). Added a
+  real `helm repo add` step to both `dependency-{full,short}.feature`.
+- **`features/quickstart.feature` excluded from the narrow-RBAC CI
+  run** — it deliberately deploys into a `dev` namespace (the whole
+  point: showing the pattern isn't tied to Thomas's own
+  `thomas-helm-test` convention), which the CI `ServiceAccount`'s
+  narrow RBAC scope has no access to. Tagged `@requires-broad-rbac` and
+  excluded via `--tags` in CI rather than widening the RBAC for one
+  demo scenario — still runs locally for anyone with broader cluster
+  access; the tag is preserved in the byte-for-byte-identical embedded
+  copies in `README.md`/`docs/index.md`.
+- **`package-lock.json` drifting from `package.json`'s version** — the
+  release-automation scripts (`bump-patch-version.mjs`,
+  `compute-release-version.mjs`) only ever wrote `package.json`, never
+  the lockfile, so two real automated patch bumps had already gone out
+  of sync (`0.1.0` in the lockfile vs. `0.1.2` in `package.json`). Both
+  scripts now run `npm install --package-lock-only` (via a new
+  `scripts/lib/npm.mjs`) right after writing the new version.
 
 ## [0.1.0] - 2026-09-09
 

@@ -3,6 +3,10 @@ Feature: Deploy and Test a Service
   I want to deploy a service and check that it is working
   So that I can see a complete service deployment and verification flow
 
+  # Deploys into "dev", not thomas-helm-test - see docs/project/ci.md
+  # for why that excludes this scenario from the narrowly-scoped real
+  # CI run.
+  @requires-broad-rbac
   Scenario: Deploy a chart from a folder, verify it in k8s, then check it over REST
     Given Helm Chart "<NginxHelmChart>" in "./charts/test-nginx"
     And Helm Release "<NginxRelease>" of "<NginxHelmChart>" named "nginx-release" in "dev"

@@ -7,6 +7,7 @@ Thanks for considering a contribution. This project follows the
 
 ```bash
 npm install
+npm run install:tools # real, current helm/kubectl into ~/.local/bin - see below
 npm test              # full suite — needs a real cluster, see below
 npm run test:ff       # stop at the first failure
 ```
@@ -22,6 +23,13 @@ this project has a strict no-mocks policy (see `AGENTS.md`). CI
 build, precisely because it has no cluster access — so a PR touching
 step definitions needs to have actually been run against a real
 cluster by you before it's opened, not just dry-run-clean.
+
+**Run `npm run install:tools` before that real run** — it's the same
+script (`scripts/tools.sh`) the real-cluster CI workflow uses to
+install `helm`/`kubectl`, so your local versions can't silently drift
+onto a different major version than CI's (see
+[`docs/project/ci.md`](../docs/project/ci.md) for the real incident
+that made this necessary).
 
 ## Before you write a `.feature` file or step definition
 

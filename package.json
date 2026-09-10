@@ -1,6 +1,6 @@
 {
   "name": "thomas",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Real (no-mocks) BDD step implementations for Helm, kubectl, and HTTP testing of k8s-native applications.",
   "license": "MIT",
   "type": "module",
@@ -20,7 +20,8 @@
     "test:usage": "cucumber-js --format usage",
     "test:junit": "cucumber-js --format junit:report.xml",
     "docs:serve": "mkdocs serve",
-    "docs:build": "mkdocs build --strict"
+    "docs:build": "mkdocs build --strict",
+    "install:tools": "bash scripts/tools.sh"
   },
   "peerDependencies": {
     "@cucumber/cucumber": "^12.2.0",
