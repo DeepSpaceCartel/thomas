@@ -53,11 +53,13 @@ a oneline/`-short.feature` sibling — see `docs/concepts/bdd-conventions.md`.
 ## Commit messages and the CHANGELOG
 
 - Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)
-  (see `.agents/skills/conventionalcommits`) — `feat:`, `fix:`, `docs:`,
-  `chore:`, etc.
+  (see the `conventionalcommits` skill in
+  [DeepSpaceCartel/skills](https://github.com/DeepSpaceCartel/skills)) —
+  `feat:`, `fix:`, `docs:`, `chore:`, etc.
 - Every PR with a user-facing change adds a real entry under
   `## [Unreleased]` in `CHANGELOG.md`, [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
-  format (see `.agents/skills/keepachangelog`). Skip this only for
+  format (see the `keepachangelog` skill in
+  [DeepSpaceCartel/skills](https://github.com/DeepSpaceCartel/skills)). Skip this only for
   changes with nothing to note (a typo fix, an internal refactor with
   no behavior change).
 - Don't hand-edit `package.json`'s `version` — it's bumped automatically
