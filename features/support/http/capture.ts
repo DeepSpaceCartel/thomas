@@ -40,7 +40,7 @@ export function captureQueryParameterFromResponseHeader(world: World, headerName
 }
 
 // Scoped deliberately to capturedValues only - not merged with
-// resolve_alias.ts's Directory/File/URL/OCIArtifact resolution. Mixing
+// resolve_resource.ts's Directory/File/URL/OCIArtifact resolution. Mixing
 // two different "what does <X> mean" systems under one syntax would be
 // genuinely ambiguous (what if the same name existed in both?); a
 // captured value and a Directory/File alias are different enough

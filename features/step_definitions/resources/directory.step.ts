@@ -91,7 +91,7 @@ When('I purge Directory known as {string}', function (this: World, alias: string
 const DEPENDENCY_VERBS = ['build', 'list', 'update'] as const;
 
 // A single step with a `{word}` parameter, not one registration per verb -
-// see the comment on the equivalent `show` step in helm.step.ts for why:
+// see the comment on the equivalent `show` step in chart.step.ts for why:
 // VS Code's Cucumber plugin can't resolve a step text that's only built at
 // runtime inside a loop.
 function runDependencyVerb(this: World, verb: string, alias: string, extraArgs: string[]): void {

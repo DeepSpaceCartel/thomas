@@ -1,4 +1,4 @@
-"""In-memory notes CRUD - see ../../../features/rest/notes.feature."""
+"""In-memory notes CRUD - see ../../../features/rest/notes-{short,full}.feature."""
 
 import itertools
 
@@ -23,7 +23,7 @@ class Note(NoteIn):
 
 
 # In-memory only, deliberately - disposable test fixture, not something
-# that needs to survive a pod restart (same reasoning as main.py's
+# that needs to survive a pod restart (same reasoning as health.py's
 # health state).
 _notes: dict[str, Note] = {}
 _ids = itertools.count(1)

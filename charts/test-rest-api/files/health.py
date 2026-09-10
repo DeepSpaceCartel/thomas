@@ -1,4 +1,4 @@
-"""Kubernetes health-probe endpoints - see ../../../features/rest/health.feature."""
+"""Kubernetes health-probe endpoints - see ../../../features/rest/health-{short,full}.feature."""
 
 import asyncio
 

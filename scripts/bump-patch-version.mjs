@@ -12,6 +12,7 @@
 import { parse, format, compare, bumpPatch } from './lib/semver.mjs';
 import { readVersion, writeVersion } from './lib/package-json.mjs';
 import { setOutput } from './lib/github-output.mjs';
+import { syncLockfile } from './lib/npm.mjs';
 
 function parseArgs(argv) {
   const args = { write: false, path: 'package.json', mainVersion: null };
@@ -45,6 +46,7 @@ function main() {
   if (compare(branchVersion, mainVersion) <= 0) {
     if (args.write) {
       writeVersion(args.path, expected);
+      syncLockfile(args.path);
     }
     setOutput('bumped', 'true');
     setOutput('version', expected);

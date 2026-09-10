@@ -1,4 +1,4 @@
-"""Real file upload/download CRUD - see ../../../features/rest/files.feature.
+"""Real file upload/download CRUD - see ../../../features/rest/files-{short,full}.feature.
 
 Uploaded bytes are written to /data (a real, writable emptyDir volume -
 see ../templates/deployment.yaml - distinct from the read-only

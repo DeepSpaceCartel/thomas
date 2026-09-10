@@ -1,7 +1,7 @@
 # A namespaced, disposable Issuer using cert-manager's own `selfSigned`
 # type - deliberately NOT the real letsencrypt-route53 ClusterIssuer this
 # cluster also has configured (production ACME + real Route53 credentials
-# - see charts/tls-demo/Chart.yaml). SelfSigned needs no external ACME/DNS
+# - see charts/test-tls-demo/Chart.yaml). SelfSigned needs no external ACME/DNS
 # call at all, so issuance is real, instant, and carries zero rate-limit
 # or shared-infrastructure risk.
 apiVersion: cert-manager.io/v1

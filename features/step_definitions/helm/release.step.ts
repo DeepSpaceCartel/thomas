@@ -49,7 +49,7 @@ const HELM_RELEASE_VERBS = ['install', 'upgrade', 'uninstall', 'rollback', 'stat
 const HELM_RELEASE_VERBS_WITH_CHART = new Set(['install', 'upgrade']);
 
 // A single step with a `{word}` parameter, not one registration per verb -
-// see the comment on the equivalent `show` step in helm.step.ts for why:
+// see the comment on the equivalent `show` step in chart.step.ts for why:
 // VS Code's Cucumber plugin can't resolve a step text that's only built at
 // runtime inside a loop.
 function runHelmReleaseVerb(this: World, verb: string, alias: string, extraArgs: string[]): void {
