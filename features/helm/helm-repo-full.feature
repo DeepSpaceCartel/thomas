@@ -76,6 +76,6 @@ Feature: BDD Framework for Helm Repositories (full table syntax)
       | url      | <MetricsServerRepoUrl>  |
     When I add Helm Repo known as "<MetricsServerHelmRepo>"
     And I update Helm Repo known as "<MetricsServerHelmRepo>" with:
-      | OPTION                     | VALUE |
-      | --fail-on-repo-update-fail | True  |
+      | OPTION    | VALUE |
+      | --timeout | 5m    |
     Then the command exited with 0

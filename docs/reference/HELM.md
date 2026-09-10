@@ -500,7 +500,7 @@ Runs `helm repo update <name>`.
 === "Short"
 
     ```gherkin
-    When I update Helm Repo "<MetricsServerHelmRepo>" with --fail-on-repo-update-fail
+    When I update Helm Repo "<MetricsServerHelmRepo>" with --timeout 5m
     Then the command exited with 0
     ```
 
@@ -508,8 +508,8 @@ Runs `helm repo update <name>`.
 
     ```gherkin
     When I update Helm Repo known as "<MetricsServerHelmRepo>" with:
-      | OPTION                     | VALUE |
-      | --fail-on-repo-update-fail | True  |
+      | OPTION    | VALUE |
+      | --timeout | 5m    |
     Then the command exited with 0
     ```
 

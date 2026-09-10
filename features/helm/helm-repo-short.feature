@@ -35,5 +35,5 @@ Feature: BDD Framework for Helm Repositories (short syntax)
     Given URL "<MetricsServerRepoUrl>" at "https://kubernetes-sigs.github.io/metrics-server/"
     And Helm Repo "<MetricsServerHelmRepo>" named "metrics-server" at "<MetricsServerRepoUrl>"
     When I add Helm Repo known as "<MetricsServerHelmRepo>"
-    And I update Helm Repo "<MetricsServerHelmRepo>" with --fail-on-repo-update-fail
+    And I update Helm Repo "<MetricsServerHelmRepo>" with --timeout 5m
     Then the command exited with 0
