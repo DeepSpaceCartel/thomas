@@ -48,7 +48,7 @@ jobs:
               gh api -X DELETE "repos/${{ github.repository }}/actions/artifacts/$id"
             done
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: site
       - id: deployment
