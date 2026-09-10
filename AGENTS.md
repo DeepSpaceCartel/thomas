@@ -125,13 +125,16 @@ charts/
   built the way it is (no custom image, health probes, in-memory/on-disk
   storage). Read before adding an endpoint or changing a health probe.
 
-Five more skills under `.agents/skills/` are general-purpose, not
-Thomas-specific — read the relevant one when the task at hand matches,
-regardless of which project you're in: `keepachangelog/` (writing a
-`CHANGELOG.md`), `semver/` (version numbers), `conventionalcommits/`
-(commit message format), `adr/` (recording an architectural decision),
-`docs/` (the Divio tutorial/how-to/reference/explanation framework —
-what this repo's own `docs/` layout follows).
+Six more skills are general-purpose, not Thomas-specific, and live in
+[DeepSpaceCartel/skills](https://github.com/DeepSpaceCartel/skills)
+instead — install the pack with `npx skills add DeepSpaceCartel/skills`,
+or browse them there, and read the relevant one when the task at hand
+matches, regardless of which project you're in: `keepachangelog` (writing
+a `CHANGELOG.md`), `semver` (version numbers), `conventionalcommits`
+(commit message format), `adr` (recording an architectural decision),
+`docs` (the Divio tutorial/how-to/reference/explanation framework — what
+this repo's own `docs/` layout follows), `mkdocs` (building a docs site
+with MkDocs + Material).
 
 ## Real-command discipline (non-negotiable, don't relax these)
 

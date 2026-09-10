@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "skills": {
+    "adr": {
+      "source": "DeepSpaceCartel/skills",
+      "sourceType": "github",
+      "skillPath": "skills/adr/SKILL.md",
+      "computedHash": "bfc5d46921ce92f50c280538b3b04f2cc5b4c9e35648f1a877403f07ea0db6d8"
+    },
+    "conventionalcommits": {
+      "source": "DeepSpaceCartel/skills",
+      "sourceType": "github",
+      "skillPath": "skills/conventionalcommits/SKILL.md",
+      "computedHash": "d23a8d68930c1b0eaef32b0bb131b12f0e17758d605a0fb92e8de1d437abae5b"
+    },
+    "docs": {
+      "source": "DeepSpaceCartel/skills",
+      "sourceType": "github",
+      "skillPath": "skills/docs/SKILL.md",
+      "computedHash": "e2c5075735133732402a6e2e3a433f9da20316114b19c67a9b67930dd8b24e6a"
+    },
+    "keepachangelog": {
+      "source": "DeepSpaceCartel/skills",
+      "sourceType": "github",
+      "skillPath": "skills/keepachangelog/SKILL.md",
+      "computedHash": "0f243df0892b743cc92da2c4f2a9d9d251886df6e76616ce1c99162ae94dc21a"
+    },
+    "mkdocs": {
+      "source": "DeepSpaceCartel/skills",
+      "sourceType": "github",
+      "skillPath": "skills/mkdocs/SKILL.md",
+      "computedHash": "ffb858e79348f45fdabf292ed0dd4bc676543cd8232c2d5c725ebd11603e1774"
+    },
+    "semver": {
+      "source": "DeepSpaceCartel/skills",
+      "sourceType": "github",
+      "skillPath": "skills/semver/SKILL.md",
+      "computedHash": "d7c93908d69f758122100ec40fc6e0ff26dec3ef2d5015f3aa7672625ca06b08"
+    }
+  }
+}

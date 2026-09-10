@@ -9,3 +9,6 @@ charts/index.yaml
 charts/test-dependency/charts/*
 !charts/test-dependency/charts/.gitkeep
 charts/test-dependency/Chart.lock
+.agents/skills/*
+!.agents/skills/thomas/
+.claude/skills/
