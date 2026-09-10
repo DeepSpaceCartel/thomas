@@ -1,6 +1,6 @@
 {
   "name": "thomas",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Real (no-mocks) BDD step implementations for Helm, kubectl, and HTTP testing of k8s-native applications.",
   "license": "MIT",
   "type": "module",
