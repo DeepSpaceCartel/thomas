@@ -44,7 +44,12 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - run: npm install
-      - run: npm run test:verbose
+      # Excludes @requires-broad-rbac (currently just quickstart.feature)
+      # - the CI ServiceAccount is intentionally scoped to
+      # thomas-helm-test only (see docs/project/ci.md), and that
+      # scenario deliberately deploys into a different namespace on
+      # purpose. Still runs locally for anyone with broader access.
+      - run: npm run test:verbose -- --tags "not @requires-broad-rbac"
 
       # TODO: I think namespace should be unique per run, not a fixed thomas-helm-test,
       # to avoid collisions if we ever do allow concurrent runs. But that would require

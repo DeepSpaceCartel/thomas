@@ -21,5 +21,15 @@ Feature: BDD Framework for Helm Chart Dependencies (short syntax)
     When I update dependencies for Directory known as "<DependencyChartDirectory>"
     Then the command exited with 0
     When I purge Directory known as "<DownloadsDirectory>"
+    # `helm dependency update` (above) resolves this repo as a real,
+    # one-off "unmanaged" lookup - confirmed for real it does NOT
+    # register it - so `helm dependency build` (which trusts Chart.lock
+    # strictly rather than re-resolving) genuinely needs it registered
+    # for real first, on a machine that's never run `helm repo add` for
+    # it before.
+    Given URL "<MetricsServerRepoUrl>" at "https://kubernetes-sigs.github.io/metrics-server/"
+    And Helm Repo "<MetricsServerRepo>" named "metrics-server" at "<MetricsServerRepoUrl>"
+    When I add Helm Repo known as "<MetricsServerRepo>"
+    Then the command exited with 0
     When I build dependencies for Directory known as "<DependencyChartDirectory>"
     Then the command exited with 0 STDOUT contains "Downloading metrics-server"

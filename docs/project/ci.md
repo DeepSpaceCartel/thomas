@@ -107,6 +107,24 @@ Assumes
 `thomas-helm-test` already exists — this scoped `ServiceAccount` can't
 create namespaces itself.
 
+### `@requires-broad-rbac`: scenarios that deliberately can't run here
+
+`real-tests.yml` runs with `--tags "not @requires-broad-rbac"`.
+`features/quickstart.feature` carries that tag — it deliberately deploys
+into a `dev` namespace (the whole point: showing the pattern isn't tied
+to Thomas's own `thomas-helm-test` convention), which the narrowly-scoped
+`thomas-ci` `ServiceAccount` above has no access to at all. Confirmed for
+real, not assumed: before the tag existed, the CI run failed with
+`secrets is forbidden: User "system:serviceaccount:arc-runners:thomas-ci"
+cannot list resource "secrets" ... in the namespace "dev"` — a real RBAC
+error `command_log.ts`'s full output surfaced immediately, where
+Cucumber's own truncated failure preview had shown only an unrelated
+`--atomic` deprecation warning that happened to print to the same STDERR
+first. Widening the CI `ServiceAccount` to cover an arbitrary second
+namespace just for one demo scenario isn't worth trading away the
+narrow-RBAC guarantee above for — this scenario still runs for anyone
+with broader cluster access, same as before.
+
 ## Tool versions: `scripts/tools.sh` (`npm run install:tools`)
 
 Both workflows install `helm`/`kubectl` via `npm run install:tools`
