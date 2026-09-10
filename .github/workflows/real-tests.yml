@@ -37,15 +37,12 @@ jobs:
       - uses: azure/setup-kubectl@v5
       - uses: azure/setup-helm@v5
 
-      - name: Write kubeconfig
-        run: |
-          umask 077
-          echo "${{ secrets.THOMAS_CI_KUBECONFIG }}" > "$RUNNER_TEMP/kubeconfig"
-          echo "KUBECONFIG=$RUNNER_TEMP/kubeconfig" >> "$GITHUB_ENV"
-
       - run: npm install
       - run: npm test
 
+      # TODO: I think namespace should be unique per run, not a fixed thomas-helm-test,
+      # to avoid collisions if we ever do allow concurrent runs. But that would require
+      # more complex SA and RBAC setup, so for now we just serialize all runs and use a fixed namespace.
       - name: Uninstall any releases this run left behind
         if: always()
         run: |
