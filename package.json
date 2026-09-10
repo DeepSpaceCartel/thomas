@@ -39,6 +39,6 @@
   "dependencies": {
     "jmespath": "^0.16.0",
     "js-yaml": "^4.1.0",
-    "undici": "7.29.1"
+    "undici": "8.10.2"
   }
 }
