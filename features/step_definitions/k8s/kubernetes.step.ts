@@ -415,7 +415,27 @@ When('I inspect the certificate in Secret known as {string}', function (this: Wo
   const tmpFile = path.join(os.tmpdir(), `thomas-cert-${process.pid}-${Date.now()}.pem`);
   fs.writeFileSync(tmpFile, certPem);
   try {
-    this.lastCommandResult = runCommand('openssl', ['x509', '-in', tmpFile, '-noout', '-subject', '-enddate', '-ext', 'subjectAltName']);
+    // -nameopt RFC2253 pins the real subject-line format (CN=x, no
+    // spaces) explicitly - openssl's own unflagged default varies by
+    // OS/build (confirmed for real: this dev sandbox's default omits
+    // spaces around "=", a CI runner image's default didn't), so this
+    // makes the assertion below environment-independent instead of
+    // accidentally depending on which OpenSSL happened to run it. See
+    // docs/project/ci.md - revisit once CI runs the same container
+    // image as dev (Dev Containers), at which point this divergence
+    // can't happen and the explicit flag is no longer load-bearing.
+    this.lastCommandResult = runCommand('openssl', [
+      'x509',
+      '-in',
+      tmpFile,
+      '-noout',
+      '-subject',
+      '-nameopt',
+      'RFC2253',
+      '-enddate',
+      '-ext',
+      'subjectAltName',
+    ]);
   } finally {
     fs.rmSync(tmpFile, { force: true });
   }

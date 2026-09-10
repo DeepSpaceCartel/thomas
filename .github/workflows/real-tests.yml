@@ -4,9 +4,10 @@ name: real-tests
 # unlike ci.yaml's `cucumber-js --dry-run`, this really deploys and
 # tears down real Helm releases in thomas-helm-test. Needs a
 # self-hosted runner living inside that cluster (GitHub-hosted runners
-# have no network path to it) and a namespace-scoped kubeconfig secret
-# — neither exists yet; provisioning them is a separate, cluster-side
-# step (see docs/project/ci.md). This workflow is inert until both do.
+# have no network path to it) — see docs/project/ci.md. The runner pod
+# authenticates via its own in-cluster ServiceAccount identity (RBAC
+# bound directly to the pod, provisioned cluster-side); no kubeconfig
+# secret needed.
 
 on:
   push:
@@ -19,11 +20,9 @@ concurrency:
 
 jobs:
   test:
-    # Never runs for a fork PR: GitHub already withholds secrets from
-    # pull_request (not pull_request_target) runs triggered by a fork,
-    # so THOMAS_CI_KUBECONFIG would just be empty there — this check
-    # makes that an explicit, readable skip instead of a confusing
-    # empty-secret failure.
+    # Never runs for a fork PR - the runner pod's in-cluster identity
+    # has real write access to the cluster, and a fork PR's workflow
+    # run is not something we trust with that.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: thomas
     timeout-minutes: 30
@@ -34,11 +33,18 @@ jobs:
         with:
           node-version: "20"
 
-      - uses: azure/setup-kubectl@v5
-      - uses: azure/setup-helm@v5
+      # scripts/tools.sh is the single source of truth for tool
+      # versions - the same script a contributor runs locally via `npm
+      # run install:tools`, so CI and dev never silently drift onto
+      # different major versions of helm/kubectl again (see
+      # docs/project/ci.md for the real incident that motivated this).
+      - name: Install latest helm/kubectl
+        run: |
+          npm run install:tools
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - run: npm install
-      - run: npm test
+      - run: npm run test:verbose
 
       # TODO: I think namespace should be unique per run, not a fixed thomas-helm-test,
       # to avoid collisions if we ever do allow concurrent runs. But that would require
@@ -49,3 +55,16 @@ jobs:
           for r in $(helm list -n thomas-helm-test -q); do
             helm uninstall "$r" -n thomas-helm-test || true
           done
+
+      # Every scenario's full, untruncated command output (see
+      # features/support/command_log.ts) - published every run, not
+      # just on failure, so a passing run's real output is just as
+      # inspectable as a failing one's.
+      - name: Publish scenario logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scenario-logs
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore

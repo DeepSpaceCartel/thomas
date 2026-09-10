@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { BeforeAll, setDefaultTimeout } from '@cucumber/cucumber';
+import { Before, BeforeAll, setDefaultTimeout } from '@cucumber/cucumber';
+import { setCurrentScenario } from './command_log.js';
 
 // cucumber-js's own default step timeout (5000ms) is far shorter than a
 // legitimate real poll used elsewhere in this suite (up to 2m, for the
@@ -29,4 +30,12 @@ setDefaultTimeout(5 * 60 * 1000);
 // fail loudly instead of silently reading stale content.
 BeforeAll(function () {
   execFileSync('helm', ['package', 'charts/test-nginx', '-d', 'charts'], { stdio: ['ignore', 'pipe', 'pipe'] });
+});
+
+// Routes every real command this scenario runs (via runCommand(), the
+// one real choke point every helm/kubectl step goes through) to its
+// own log file under test-results/ - see command_log.ts for why a
+// counter, not the scenario name, keys the filename.
+Before(function (scenario) {
+  setCurrentScenario(scenario.pickle.uri, scenario.pickle.name);
 });

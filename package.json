@@ -20,7 +20,8 @@
     "test:usage": "cucumber-js --format usage",
     "test:junit": "cucumber-js --format junit:report.xml",
     "docs:serve": "mkdocs serve",
-    "docs:build": "mkdocs build --strict"
+    "docs:build": "mkdocs build --strict",
+    "install:tools": "bash scripts/tools.sh"
   },
   "peerDependencies": {
     "@cucumber/cucumber": "^12.2.0",
