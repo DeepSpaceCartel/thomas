@@ -5,10 +5,12 @@ import { RestEndpoint, restEndpointFromFields, restEndpointFromTable } from '../
 import { RequestRow, sendHttpRequest } from '../../support/http/http_request.js';
 import { captureHeaderFromResponse, captureQueryParameterFromResponseHeader, captureValueFromResponse } from '../../support/http/capture.js';
 import { attempt } from '../../support/attempt.js';
+import { parseDuration, pollUntil } from '../../support/poll.js';
 import { assertCondition } from '../../support/assert_condition.js';
 import { fetchCertPem } from '../../support/k8s/secret.js';
 import { getRegisteredObject } from '../k8s/kubernetes.step.js';
 import { Service } from '../../support/k8s/service.js';
+import { Pod } from '../../support/k8s/pod.js';
 import { getPendingPayload } from '../common.step.js';
 
 // Goes through the same lazy pending-selector resolution as every real
@@ -29,6 +31,17 @@ function resolveService(world: World, alias: string): Service | undefined {
   }
 }
 
+// Same reasoning as resolveService above - a Pod built via progressive
+// discovery has no real object in world.pods until something resolves
+// it.
+function resolvePod(world: World, alias: string): Pod | undefined {
+  try {
+    return getRegisteredObject(world, 'pod', alias);
+  } catch {
+    return undefined;
+  }
+}
+
 // https only - resolves a registered Secret alias to the real decoded
 // cert bytes to trust (see rest_endpoint.ts's caCert).
 function resolveTrustedCert(world: World, alias: string): Buffer | undefined {
@@ -39,39 +52,46 @@ function resolveTrustedCert(world: World, alias: string): Buffer | undefined {
 // Construction steps are scheme-specific - scheme is a real, structural
 // choice made once, at construction time (see rest_endpoint.ts).
 Given('HTTP Endpoint known as {string}:', function (this: World, alias: string, dataTable: DataTable) {
-  this.restEndpoints.set(alias, restEndpointFromTable(dataTable, 'http', (a) => resolveService(this, a), (a) => resolveTrustedCert(this, a)));
+  this.restEndpoints.set(alias, restEndpointFromTable(dataTable, 'http', (a) => resolveService(this, a), (a) => resolvePod(this, a), (a) => resolveTrustedCert(this, a)));
 });
 
 Given('HTTPS Endpoint known as {string}:', function (this: World, alias: string, dataTable: DataTable) {
-  this.restEndpoints.set(alias, restEndpointFromTable(dataTable, 'https', (a) => resolveService(this, a), (a) => resolveTrustedCert(this, a)));
+  this.restEndpoints.set(alias, restEndpointFromTable(dataTable, 'https', (a) => resolveService(this, a), (a) => resolvePod(this, a), (a) => resolveTrustedCert(this, a)));
 });
 
 // Oneline forms - `service`/`port` are always both used together (see
 // every rest/*.feature file). The table forms stay available for
 // "I attempt to define ..." negative tests.
 Given('HTTP Endpoint {string} on {string} port {string}', function (this: World, alias: string, service: string, port: string) {
-  this.restEndpoints.set(alias, restEndpointFromFields({ service, port }, 'http', (a) => resolveService(this, a), (a) => resolveTrustedCert(this, a)));
+  this.restEndpoints.set(alias, restEndpointFromFields({ service, port }, 'http', (a) => resolveService(this, a), (a) => resolvePod(this, a), (a) => resolveTrustedCert(this, a)));
+});
+
+// The Pod-target sibling - distinct step text ("on Pod known as") so it
+// can't be confused with the Service form above, which takes a bare
+// alias string with no type name.
+Given('HTTP Endpoint {string} on Pod known as {string} port {string}', function (this: World, alias: string, pod: string, port: string) {
+  this.restEndpoints.set(alias, restEndpointFromFields({ pod, port }, 'http', (a) => resolveService(this, a), (a) => resolvePod(this, a), (a) => resolveTrustedCert(this, a)));
 });
 
 Given('HTTPS Endpoint {string} on {string} port {string} trusting {string}', function (this: World, alias: string, service: string, port: string, trust: string) {
-  this.restEndpoints.set(alias, restEndpointFromFields({ service, port, trust }, 'https', (a) => resolveService(this, a), (a) => resolveTrustedCert(this, a)));
+  this.restEndpoints.set(alias, restEndpointFromFields({ service, port, trust }, 'https', (a) => resolveService(this, a), (a) => resolvePod(this, a), (a) => resolveTrustedCert(this, a)));
 });
 
 When('I attempt to define HTTP Endpoint known as {string}:', function (this: World, alias: string, dataTable: DataTable) {
   return attempt(this, () => {
-    this.restEndpoints.set(alias, restEndpointFromTable(dataTable, 'http', (a) => resolveService(this, a), (a) => resolveTrustedCert(this, a)));
+    this.restEndpoints.set(alias, restEndpointFromTable(dataTable, 'http', (a) => resolveService(this, a), (a) => resolvePod(this, a), (a) => resolveTrustedCert(this, a)));
   });
 });
 
 When('I attempt to define HTTPS Endpoint known as {string}:', function (this: World, alias: string, dataTable: DataTable) {
   return attempt(this, () => {
-    this.restEndpoints.set(alias, restEndpointFromTable(dataTable, 'https', (a) => resolveService(this, a), (a) => resolveTrustedCert(this, a)));
+    this.restEndpoints.set(alias, restEndpointFromTable(dataTable, 'https', (a) => resolveService(this, a), (a) => resolvePod(this, a), (a) => resolveTrustedCert(this, a)));
   });
 });
 
 When('I attempt to define HTTP Endpoint known as {string} using {string}', function (this: World, alias: string, payloadAlias: string) {
   return attempt(this, () => {
-    this.restEndpoints.set(alias, restEndpointFromFields(getPendingPayload(this, payloadAlias), 'http', (a) => resolveService(this, a), (a) => resolveTrustedCert(this, a)));
+    this.restEndpoints.set(alias, restEndpointFromFields(getPendingPayload(this, payloadAlias), 'http', (a) => resolveService(this, a), (a) => resolvePod(this, a), (a) => resolveTrustedCert(this, a)));
   });
 });
 
@@ -172,6 +192,31 @@ When('I send {string} as {httpMethod} to Endpoint known as {string} path {string
 When('I attempt to send a {httpMethod} request to Endpoint known as {string} path {string}', function (this: World, method: string, alias: string, path: string) {
   const endpoint = getRestEndpoint(this, alias);
   return attempt(this, () => sendHttpRequest(this, endpoint, method, path));
+});
+
+// A real Endpoint having a real IP (Pod-target construction already
+// requires this - see rest_endpoint.ts) doesn't mean the real process
+// inside is listening on that port *yet* - confirmed live: a fetch()
+// against a genuinely-not-ready app's own Pod IP fails outright
+// ("fetch failed"/ECONNREFUSED) for a real, brief window after the Pod
+// gets its IP but before its own server has bound the port. Retries the
+// real request itself (not a field of an already-known object) until it
+// connects, tolerating a real connection failure as retryable and
+// leaving any other failure (a real non-2xx/etc.) to the paired
+// `Then` step that follows, same division as every other poll step in
+// this suite.
+When('I poll Endpoint known as {string} path {string} every {string} for up to {string} until the {httpMethod} request succeeds', function (this: World, alias: string, path: string, interval: string, timeout: string, method: string) {
+  const endpoint = getRestEndpoint(this, alias);
+  const world = this;
+  return pollUntil(parseDuration(interval), parseDuration(timeout), async () => {
+    try {
+      await sendHttpRequest(world, endpoint, method, path);
+      return { rows: [{ label: 'request succeeded', actual: true, condition: 'equals', expected: 'true', outcome: 'pass' as const }], snapshot: world.lastHttpResponse ? `status ${world.lastHttpResponse.status}` : '' };
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      return { rows: [{ label: 'request succeeded', actual: false, condition: 'equals', expected: 'true', outcome: 'pass' as const }], snapshot: message };
+    }
+  });
 });
 
 When(

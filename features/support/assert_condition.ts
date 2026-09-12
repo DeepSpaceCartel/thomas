@@ -1,4 +1,5 @@
 import { defineParameterType } from '@cucumber/cucumber';
+import { getCurrentLogPath } from './command_log.js';
 
 // Every condition name this file understands - shared by the error message
 // below and the {condition} Cucumber parameter type (used by the oneline
@@ -137,7 +138,9 @@ export function conditionHolds(actual: unknown, condition: string, expected: str
 // *every* element failed, never collapsing to a bare true/false.
 export function assertCondition(key: string, actual: unknown, condition: string, expected: string, source: Record<string, unknown>): void {
   const fail = (reason: string) => {
-    throw new Error(`${reason}\n${formatAvailableFields(source)}`);
+    const logPath = getCurrentLogPath();
+    const logLine = logPath ? `\nFull log: ${logPath}` : '';
+    throw new Error(`${reason}\n${formatAvailableFields(source)}${logLine}`);
   };
 
   if (Array.isArray(actual)) {

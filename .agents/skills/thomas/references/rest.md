@@ -29,6 +29,19 @@ needs the object's real `.name`/`.namespace`. Its `Given` stays pure
 construction (no live check) — the first real validation is the paired
 `When I send a ...`.
 
+**`pod` is the Service-bypassing alternative to `service`** (exactly one
+required, never both): `Given HTTP Endpoint "<Api>" on Pod known as
+"<ApiPod>" port "8000"`. Unlike `service`, this one *does* do a real
+live check at construction — `kubectl get pod ... -o
+jsonpath={.status.podIP}` — because there's no DNS name to defer to;
+throws a specific error if the Pod has no real IP yet rather than
+building a broken URL (poll `status.podIP` first if it might not).
+This is the only way to reach a Pod a Service's readiness gate would
+otherwise never route to — see `features/rest/health-{short,full}.feature`'s
+"Flipping readiness" scenario for the real worked example (proving a
+liveness endpoint keeps responding after the Service has stopped
+routing to a NotReady Pod).
+
 ## HTTPS Endpoint
 
 ```gherkin
@@ -82,6 +95,15 @@ Both have `I attempt to send a ...` siblings for genuine network-failure
 negative tests. `path` and every table `VALUE` cell go through embedded
 `<...>`-substitution against captured values (see below) before the
 request is built.
+
+**Polling until a request succeeds**: `When I poll Endpoint known as
+{string} path {string} every {string} for up to {string} until the
+{httpMethod} request succeeds` — a real IP existing (right after a
+Pod-target Endpoint's Pod comes into existence) doesn't mean the process
+behind it is listening yet, confirmed live (`fetch failed`). "Succeeds"
+means a real connection was made, not a 2xx status - a real 503 still
+needs a real connection first. Built on `pollUntil` (`support/poll.ts`,
+generalized to accept an async `evaluate`), not a bespoke retry loop.
 
 `TYPE` rows in the request table:
 

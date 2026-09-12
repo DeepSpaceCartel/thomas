@@ -56,6 +56,6 @@ Feature: BDD Framework for Helm Releases (short syntax)
     When I install Helm Release "<DuplicateRelease>" with --create-namespace
     Then the command exited with 0
     When I install Helm Release known as "<DuplicateRelease>"
-    Then the command exited with 1 STDERR contains "cannot reuse a name"
+    Then the command exited with 1 STDERR contains "cannot re-use a name"
     When I uninstall Helm Release known as "<DuplicateRelease>"
     Then the command exited with 0

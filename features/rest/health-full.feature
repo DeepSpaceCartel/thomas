@@ -85,14 +85,17 @@ Feature: BDD Framework for the rest-api test fixture's health probes (full synta
       | status.containerStatuses[0].ready         | equals    | false | pass    |
       | status.containerStatuses[0].restartCount  | equals    | 0     | pass    |
 
-    # Deliberately no follow-up request to /health/ready through
-    # Endpoint here: once the Pod is confirmed NotReady above, it has
-    # been removed from the Service's endpoints entirely (that's what the
-    # poll just proved) - a request routed through the Service has no
-    # backend left to reach, so it fails to connect rather than
-    # returning a 503. The readiness-gates-traffic behavior is already
-    # fully proven by the poll above: k8s's own readinessProbe (hitting
-    # this exact path) is what flipped containerStatuses[0].ready false.
+    # No follow-up request to /health/ready through the Service Endpoint:
+    # once the Pod is confirmed NotReady above, it has been removed from
+    # the Service's endpoints entirely (that's what the poll just
+    # proved) - a request routed through the Service has no backend left
+    # to reach. But a real HTTP Endpoint built straight on the Pod's own
+    # IP bypasses the Service's readiness gate entirely - proving this
+    # fixture's liveness endpoint really does keep responding even while
+    # genuinely NotReady, not just that the poll observed a status field.
+    And HTTP Endpoint "<ReadinessPodApi>" on Pod known as "<ReadinessPod>" port "8000"
+    When I send a GET request to Endpoint known as "<ReadinessPodApi>" path "/health/live"
+    Then the response status is 200
 
     When I uninstall Helm Release known as "<ReadinessRelease>"
     Then the command exited with 0
@@ -103,6 +106,21 @@ Feature: BDD Framework for the rest-api test fixture's health probes (full synta
       | service  | <UndefinedRestService> |
       | port     | 8000                  |
     Then it should have failed with 'No Service registered as "<UndefinedRestService>"'
+
+  Scenario: Rejecting both a service and a pod field on an HTTP Endpoint
+    When I attempt to define HTTP Endpoint known as "<BadEndpoint>":
+      | PROPERTY | VALUE                 |
+      | service  | <UndefinedRestService> |
+      | pod      | <UndefinedRestPod>     |
+      | port     | 8000                  |
+    Then it should have failed with 'RestEndpoint accepts only one of "service" or "pod", not both'
+
+  Scenario: Rejecting an unregistered Pod alias from an HTTP Endpoint
+    When I attempt to define HTTP Endpoint known as "<BadPodEndpoint>":
+      | PROPERTY | VALUE              |
+      | pod      | <UndefinedRestPod> |
+      | port     | 8000               |
+    Then it should have failed with 'No Pod registered as "<UndefinedRestPod>"'
 
   Scenario: Rejecting an HTTPS Endpoint missing a trust field
     Given Directory "<TrustlessChartDirectory>" at "./charts/test-rest-api"
@@ -217,4 +235,40 @@ Feature: BDD Framework for the rest-api test fixture's health probes (full synta
     When I uninstall Helm Release known as "<TlsDemoRelease>"
     Then the command exited with 0
     When I delete Secret known as "<UnrelatedSecret>"
+    Then the command exited with 0
+
+  Scenario: Polling a fire-and-forget rollout's endpoint until it really responds
+    Given Directory "<FireAndForgetChartDirectory>" at "./charts/test-rest-api"
+    And Helm Chart "<FireAndForgetHelmChart>" in "<FireAndForgetChartDirectory>"
+    And Helm Release known as "<FireAndForgetRelease>":
+      | PROPERTY  | VALUE                          |
+      | chart     | <FireAndForgetHelmChart>       |
+      | name      | thomas-rest-api-fire-and-forget |
+      | namespace | thomas-helm-test               |
+    # No --atomic/--wait - dispatches and returns immediately. This
+    # fixture installs real pip packages at pod startup (see
+    # charts/test-rest-api/README.md), a real, non-trivial window where
+    # the Pod has a real IP but uvicorn hasn't bound its port yet.
+    When I upgrade Helm Release known as "<FireAndForgetRelease>" with:
+      | OPTION             | VALUE |
+      | --install          | True  |
+      | --create-namespace | True  |
+    Then the command exited with 0
+
+    Given Pod "<FireAndForgetPod>"
+    And "<FireAndForgetPod>" namespace is "thomas-helm-test"
+    And "<FireAndForgetPod>" label "app.kubernetes.io/instance" is "thomas-rest-api-fire-and-forget"
+    When I wait for Pod known as "<FireAndForgetPod>" every "1s" for up to "30s"
+    When I poll Pod known as "<FireAndForgetPod>" every "1s" for up to "30s" until:
+      | KEY          | CONDITION | VALUE | OUTCOME |
+      | status.podIP | exists    |       | pass    |
+    And HTTP Endpoint "<FireAndForgetApi>" on Pod known as "<FireAndForgetPod>" port "8000"
+    # The real proof: a bare `When I send a GET request ...` here would
+    # race the real startup window and fail with "fetch failed" for real
+    # (confirmed live) - this retries the real request itself until it
+    # connects.
+    When I poll Endpoint known as "<FireAndForgetApi>" path "/health/live" every "2s" for up to "60s" until the GET request succeeds
+    Then the response status is 200
+
+    When I uninstall Helm Release known as "<FireAndForgetRelease>"
     Then the command exited with 0

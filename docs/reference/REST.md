@@ -122,6 +122,52 @@ server presents is exactly what a client needs to trust it — no separate
 `ca.crt` field, no new Secret shape; this reuses the `Secret` kind
 already built for [Kubernetes: TLS](KUBECTL.md#tls-certificates) directly.
 
+### Define an HTTP Endpoint on a Pod
+
+=== "Short"
+
+    ```gherkin
+    Given HTTP Endpoint "<Api>" on Pod known as "<ApiPod>" port "8000"
+    ```
+
+=== "Full"
+
+    ```gherkin
+    Given HTTP Endpoint known as "<Api>":
+      | PROPERTY | VALUE    |
+      | pod      | <ApiPod> |
+      | port     | 8000     |
+    ```
+
+The Service-bypassing sibling of the `service` field above: `pod`
+resolves to a real `Pod` object, and `RestEndpoint`'s constructor does a
+real, live `kubectl get pod ... -o jsonpath={.status.podIP}` lookup to
+build `http://<real-ip>:<port>` — the only way to reach a Pod that a
+Service's own readiness gate would otherwise never route to. `service`
+and `pod` are mutually exclusive; exactly one is required. If the Pod
+might not have a real IP yet, poll for it first (`status.podIP` via the
+same generic poll-resource-field mechanism used for
+`status.readyReplicas`) — the constructor throws a specific error rather
+than silently building a broken `http://:PORT` URL.
+
+**In practice** (`features/rest/health-{short,full}.feature`'s
+"Flipping readiness" scenario) — proving a fixture's liveness endpoint
+keeps responding even after its own readiness probe has failed and the
+Service has stopped routing to it:
+```gherkin
+Given Pod known as "<ReadinessPod>":
+  | PROPERTY                   | VALUE                     |
+  | namespace                  | thomas-helm-test          |
+  | app.kubernetes.io/instance | thomas-rest-api-readiness |
+When I poll Pod known as "<ReadinessPod>" every "3s" for up to "30s" until:
+  | KEY                                      | CONDITION | VALUE | OUTCOME |
+  | status.containerStatuses[0].ready        | equals    | false | pass    |
+
+And HTTP Endpoint "<ReadinessPodApi>" on Pod known as "<ReadinessPod>" port "8000"
+When I send a GET request to Endpoint known as "<ReadinessPodApi>" path "/health/live"
+Then the response status is 200
+```
+
 ## Sending Requests
 
 ### Send a Request
@@ -138,6 +184,36 @@ any step at all, rather than being sent and failing at the HTTP layer.
 
 ```gherkin
 When I send a GET request to Endpoint known as "<RestApi>" path "/health/live"
+Then the response status is 200
+```
+
+### Polling Until a Request Succeeds
+
+```gherkin
+When I poll Endpoint known as "<Alias>" path "<path>" every "<interval>" for up to "<timeout>" until the {httpMethod} request succeeds
+```
+
+A real IP existing (a [Pod-target Endpoint](#define-an-http-endpoint-on-a-pod),
+right after its Pod comes into existence) doesn't mean the process behind
+it is listening on that port *yet* — confirmed live: a bare `When I send
+a ...` against a fresh Pod-target Endpoint can fail outright
+(`TypeError: fetch failed`) for a real, brief window. This retries the
+real request itself until it connects — "succeeds" means a real
+connection was made, not that the response was 2xx (a real 503 still
+needs a real, successful connection first, and is a perfectly valid thing
+to assert on afterward):
+
+```gherkin
+Given Pod "<AppPod>"
+And "<AppPod>" namespace is "dev"
+And "<AppPod>" label "app.kubernetes.io/instance" is "my-release"
+When I wait for Pod known as "<AppPod>" every "2s" for up to "30s"
+When I poll Pod known as "<AppPod>" every "2s" for up to "30s" until:
+  | KEY          | CONDITION | VALUE | OUTCOME |
+  | status.podIP | exists    |       | pass    |
+
+And HTTP Endpoint "<AppApi>" on Pod known as "<AppPod>" port "8080"
+When I poll Endpoint known as "<AppApi>" path "/health/live" every "2s" for up to "30s" until the GET request succeeds
 Then the response status is 200
 ```
 
@@ -429,8 +505,50 @@ unchanged for assertions on the response JSON:
 ## Capturing a dynamic value for later use
 
 A server-generated value (a created resource's real `id`) is only known
-*after* a response comes back. Three capture forms, all writing into
-the same `World.capturedValues` store:
+*after* a response comes back. Several capture forms, all writing into
+the same `World.capturedValues` store — this page covers the
+response-derived ones; `Given the value of environment variable
+{string}, or {string}, or {string} is known as {string}` and `Given the
+value at {string} from the command result is known as {string}` (a real
+k8s object field, e.g. a Service's ClusterIP) live in `common.step.ts`
+alongside them. So does the file-content form below:
+
+```gherkin
+Given the value of environment variable {string} or {string} is known as {string}
+```
+
+A simpler sibling of the two-level-fallback form above, for the
+single-real-env-var case — no second candidate variable, just one real
+`process.env` read with a default (e.g. cucumber-js's own
+`CUCUMBER_WORKER_ID`, set only under `--parallel`, `"0"` otherwise). Note
+the missing comma before `or` — that's what keeps it textually
+unambiguous against the two-level form, not just a shorter arg list.
+
+```gherkin
+Given the content of file at {string} is known as {string}
+```
+
+A real file's content, trimmed (like every other real "one line of
+text" capture in this suite) — the third source alongside a command
+result and an environment variable. Motivating case: a real
+`ssh-keygen`-produced public key needs to become a Helm `--set-string`
+value; a raw `--set-file` of the same path instead reads the file's own
+trailing newline into the value verbatim, which breaks a chart that
+interpolates it directly into a pod template's own YAML block scalar
+(confirmed live: a real `helm template` YAML parse error) — trimming
+here avoids that entirely.
+
+```gherkin
+Given the STDOUT of the last command is known as {string}
+```
+
+The raw, un-parsed sibling of `the value at {string} from the command
+result is known as {string}` — that one needs real structured (JSON/YAML)
+output to query with JMESPath; this one is for a command whose real
+output is already exactly the one plain line a scenario needs (e.g. a
+real `ssh-keyscan`'s current host-key line — genuinely unpredictable
+ahead of time, generated fresh by the fixture's own `ssh-keygen -A` at
+container startup).
 
 ### Capture a Value from the Response Body
 
@@ -516,13 +634,37 @@ Then the response status is 302
 Given the query parameter "code" from response header "location" is known as "<AuthCode>"
 ```
 
+### Comparing Two Captured Values
+
+```gherkin
+Then the value known as {string} {condition} {string}
+```
+
+The one place a captured value is *compared* rather than substituted into
+something being built — kept deliberately separate from the response/
+command `SOURCE|CONDITION|VALUE` assertion tables below, which compare
+against a literal on purpose (see the warning box below). The right-hand
+`{string}` goes through the same captured-value substitution every
+construction step already uses, so it can itself be a composed template —
+useful when the *expected* value is dynamic too (e.g. built from a
+captured registry URL plus a real, content-derived git sha):
+
+```gherkin
+Given the value at "id" from the last response is known as "<NoteId>"
+And the value at "title" from the last response is known as "<NoteTitle>"
+Then the value known as "<NoteTitle>" equals "Groceries"
+Given the value "Note <NoteId>" is known as "<NoteLabel>"
+Then the value known as "<NoteLabel>" contains "<NoteId>"
+```
+
 !!! warning "Captured-value substitution does not run in assertion tables"
-    This substitution only applies inside the HTTP request table — it
-    does **not** run inside `KEY|CONDITION|VALUE` assertion tables.
+    This substitution only applies inside the HTTP request table (and the
+    right-hand side of `the value known as ... {condition} ...` above) —
+    it does **not** run inside `KEY|CONDITION|VALUE` assertion tables.
     Writing `| id | equals | <NoteId> |` as an assertion compares
-    against the literal string `"<NoteId>"` and can never pass; assert
-    other real fields instead if you need to prove a fetched value
-    matches something captured earlier.
+    against the literal string `"<NoteId>"` and can never pass; use
+    `the value known as {string} {condition} {string}` instead if you
+    need to prove a fetched value matches something captured earlier.
 
 *[BDD]: Behavior-Driven Development
 *[CLI]: Command-Line Interface
