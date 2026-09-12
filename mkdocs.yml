@@ -16,6 +16,9 @@ nav:
       - Helm: reference/HELM.md
       - Kubernetes: reference/KUBECTL.md
       - REST: reference/REST.md
+      - Docker: reference/DOCKER.md
+      - SSH: reference/SSH.md
+      - TLS: reference/TLS.md
   - Project:
       - Getting started: project/getting-started.md
       - Fixtures and charts: project/fixtures.md

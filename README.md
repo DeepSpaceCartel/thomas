@@ -37,8 +37,12 @@ was the first domain this was built out against; the same
 define-then-act, alias-reference, and table conventions now extend to
 real `kubectl`-driven checks (`Deployment`/`Service`/`Pod`/`ConfigMap`/
 `ReplicaSet`/`Secret` discovery and status, events, logs, polling, `exec`,
-RBAC checks, TLS certificate inspection) and to real HTTP/HTTPS requests
-against a deployed app's own endpoints. See [`AGENTS.md`](AGENTS.md) for
+RBAC checks, TLS certificate inspection), to real HTTP/HTTPS requests
+against a deployed app's own endpoints, to real `docker buildx` builds
+and pushes against a real remote BuildKit endpoint, and to real
+`ssh-keygen`/`ssh-keyscan`/`openssl` fixture generation (a real SSH
+keypair, a real self-signed CA and certificate chain). See
+[`AGENTS.md`](AGENTS.md) for
 the canonical, tool-agnostic reference an agent should read before
 working in this repo.
 

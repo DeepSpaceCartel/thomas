@@ -93,10 +93,18 @@ features/
   k8s/       real `kubectl` behavior (Deployment/Service/Pod/Secret discovery,
              polling, exec, RBAC, TLS certificate inspection)
   rest/      real HTTP behavior against the rest-api fixture app
+  docker/    real `docker buildx` behavior (create/remove a remote builder,
+             build and push a real image) — also holds
+             docker-buildx-builder-validation-{short,full}.feature
+  ssh/       real `ssh-keygen`/`ssh-keyscan` behavior (fixture generation only)
+             — also holds ssh-key-pair-validation-{short,full}.feature
+  tls/       real `openssl` CA/certificate generation (fixture generation only,
+             the counterpart to k8s/'s cert-manager TLS *inspection*) — also
+             holds tls-validation-{short,full}.feature
   resources/ resource-construction validation (the negative-path "Given ... has
              no field X" tests for Directory/File/URL/OCIArtifact)
   fixtures/  real files used by upload/download scenarios (features/rest/files-{short,full}.feature)
-  step_definitions/  mirrors support/'s domain split (resources/, helm/, k8s/, http/),
+  step_definitions/  mirrors support/'s domain split (resources/, helm/, k8s/, http/, docker/, ssh/, tls/),
                      plus common.step.ts at the top level (type-agnostic)
   support/
     resources/  Directory, File, URL, OCIArtifact + resolve_resource.ts
@@ -104,6 +112,9 @@ features/
     k8s/        Deployment, Service, Pod, ConfigMap, ReplicaSet, Secret + discover.ts
                 (shared label-selector logic)
     http/       RestEndpoint, http_request.ts (real fetch()), capture.ts (dynamic values)
+    docker/     DockerBuildxBuilder (remote BuildKit endpoint)
+    ssh/        SshKeyPair (fixture-generation only)
+    tls/        SelfSignedCa, TlsCertificate (fixture-generation only)
     (top level)  generic infra: assert_condition.ts, query.ts (JMESPath), run_command.ts,
                  poll.ts, attempt.ts, hooks.ts, world.ts
 charts/
@@ -112,15 +123,23 @@ charts/
   test-rest-api/      real FastAPI test fixture — see charts/test-rest-api/README.md
   test-tls-demo/      self-signed cert-manager Issuer+Certificate fixture — see
                       features/k8s/tls-{short,full}.feature and docs/reference/KUBECTL.md#tls-certificates
+  test-registry/      minimal, unauthenticated, plain-HTTP OCI registry fixture — see
+                      docs/reference/DOCKER.md
+fixtures/
+  docker/    a tiny scratch Dockerfile + buildkitd.toml (insecure-registry trust
+             for charts/test-registry) used by the Docker domain's own dogfooding
+  ssh/       an empty (.gitkeep-only) directory referenced by the SSH/TLS
+             domains' own validation scenarios (real generation dogfooding
+             uses a fresh `.cache/` directory created via `createDirectory`)
 ```
 
 ## Domain skills (read the relevant one before working in that area)
 
 - **`.agents/skills/thomas/`** — `SKILL.md` is the index; `references/`
-  holds `using-steps.md`/`helm.md`/`kubectl.md`/`rest.md` (the
-  usage-facing step catalogs, read first before writing a `.feature`
-  file) and `extending.md` (the core Alias/DataTable methodology, read
-  instead when changing Thomas itself, not just using it).
+  holds `using-steps.md`/`helm.md`/`kubectl.md`/`rest.md`/`docker.md`/
+  `ssh.md`/`tls.md` (the usage-facing step catalogs, read first before
+  writing a `.feature` file) and `extending.md` (the core Alias/DataTable
+  methodology, read instead when changing Thomas itself, not just using it).
 - **`charts/test-rest-api/README.md`** — how and why that fixture app is
   built the way it is (no custom image, health probes, in-memory/on-disk
   storage). Read before adding an endpoint or changing a health probe.
@@ -210,3 +229,67 @@ with MkDocs + Material).
   cert-manager TLS certificate inspection via a self-signed fixture
   chart) — shipped, verified (71/71 scenarios, cluster confirmed clean
   after a real run).
+- **Phase 6** (`SSH Key Pair` — real `ssh-keygen`/`ssh-keyscan`, fixture-
+  generation only, not host-key trust policy — and `Self-Signed CA`/
+  `TLS Certificate` — real `openssl` CA/certificate generation, the
+  counterpart to `k8s/`'s existing cert-manager TLS *inspection*) —
+  shipped, verified. SSH: 12/12 scenarios passing (a real ed25519
+  keypair + a real `ssh-keyscan` of github.com). TLS: 14/14 scenarios
+  passing (a real self-signed CA + a real certificate it signs,
+  independently re-verified with `openssl verify`/`-text` outside the
+  suite itself). Both run twice in a row, no cluster involvement (pure
+  local filesystem + real CLI calls).
+- **Phase 5** (`Directory`/`File` resource extensions — `createDirectory`/
+  `createFile`, a real `mkdir -p`/write pair symmetric with `purgeDirectory`
+  — and the first new domain built on real CLI wrapping, `Docker Buildx
+  Builder`: create/remove a remote BuildKit builder, build and push a
+  real image, scoped `--registry-credentials` via a `runCommand` `env`
+  option) — shipped, verified. Resources: 20/20 scenarios passing.
+  Docker: 12/12 scenarios passing against a real, disposable BuildKit +
+  registry pair in `thomas-helm-test` (which required labeling that
+  namespace `pod-security.kubernetes.io/enforce: privileged` — BuildKit
+  needs privileged/rootless-unconfined execution the default `baseline`
+  level blocks), run twice in a row, cluster confirmed clean both times
+  (allowing a few seconds for normal terminating-Pod GC lag after
+  `helm uninstall --wait` — a transient "Error" status during container
+  shutdown, not a real leftover, see `docker-buildx-builder-full.feature`'s
+  uninstall steps).
+- **Phase 7** (`HTTP`/`HTTPS Endpoint` gained a `pod` target — the
+  Service-bypassing alternative to `service`, a real live `kubectl get
+  pod -o jsonpath={.status.podIP}` lookup at construction — for reaching
+  a Pod a Service's own readiness gate would otherwise never route to)
+  — shipped, verified. Dogfooded by extending `features/rest/health-
+  {short,full}.feature`'s existing "Flipping readiness" scenario: 14/14
+  scenarios passing, run twice, cluster confirmed clean both times.
+- **Phase 8** (captured-value composition — `Given the value of
+  environment variable {string}, or {string}, or {string} is known as
+  {string}` (real `${VAR1:-${VAR2:-DEFAULT}}`, never a shell) and
+  `Given the value {string} is known as {string}` — plus a non-throwing
+  "soft" substitution pass for construction tables/progressive-selector
+  values and `File`'s `create` content, so a captured value can stand in
+  for a `namespace` field or a generated config file's content) —
+  shipped, verified. Dogfooded in `features/k8s/kubernetes-{short,full}.feature`'s
+  new "captured environment variable" scenario: 11/11 k8s scenarios
+  passing, cluster confirmed clean.
+- **Phase 9** (`When I label namespace {string} with:`/`with {flags}` —
+  stateless, real `kubectl label namespace`, needed to unblock a
+  privileged/rootless-unconfined BuildKit pod in a namespace whose
+  default PodSecurity level would otherwise refuse it) — shipped,
+  verified: 8/8 `features/k8s/kubernetes-{short,full}.feature` scenarios
+  passing twice in a row, cluster (and the real test label) confirmed
+  clean both times.
+- **Phase 10** (`When I wait for {word} known as {string} every ... for up
+  to ...` — a progressive selector's own discovery is eager/one-shot, wrong
+  for a fire-and-forget/`--wait`-less rollout whose Pod may not exist the
+  instant `helm upgrade` returns; retries real discovery itself, not a
+  field of an already-known object — and `When I poll Endpoint known as
+  ... until the {httpMethod} request succeeds` — a real IP existing
+  doesn't mean the process behind it is listening yet, confirmed live;
+  `pollUntil` (`support/poll.ts`) was generalized to accept an async
+  `evaluate`, backward-compatible, to support this) — shipped, verified.
+  Dogfooded in `features/k8s/kubernetes-full.feature`'s "fire-and-forget
+  rollout" scenario and `features/rest/health-full.feature`'s "Polling
+  a fire-and-forget rollout's endpoint" scenario: both real, both pass,
+  cluster confirmed clean. First real consumer:
+  `devcontainer-builder/service/features/health.feature`'s migration onto
+  Thomas (11/11 scenarios, twice in a row).

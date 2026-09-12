@@ -22,11 +22,16 @@ export interface PollRow {
 // re-check of the same data) until every "pass" row holds (-> success),
 // any "fail" row holds (-> immediate failure, no need to exhaust the
 // timeout), or the timeout elapses (-> failure, reporting the last real
-// observed state so there's something to investigate).
-export async function pollUntil(intervalMs: number, timeoutMs: number, evaluate: () => { rows: PollRow[]; snapshot: string }): Promise<void> {
+// observed state so there's something to investigate). `evaluate` may
+// return its result directly (every existing caller: a real, synchronous
+// `runCommand`) or as a Promise (a real `fetch()` poll, the one
+// currently-async real check this suite needs) - `await`ing a
+// synchronous value is a real no-op, so this is a backward-compatible
+// generalization, not a second code path.
+export async function pollUntil(intervalMs: number, timeoutMs: number, evaluate: () => { rows: PollRow[]; snapshot: string } | Promise<{ rows: PollRow[]; snapshot: string }>): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
-    const { rows, snapshot } = evaluate();
+    const { rows, snapshot } = await evaluate();
     const matchedFailRows = rows.filter((r) => r.outcome === 'fail' && conditionHolds(r.actual, r.condition, r.expected));
     if (matchedFailRows.length > 0) {
       // Leads with the matched VALUE itself (e.g. "ErrImagePull: ..."),

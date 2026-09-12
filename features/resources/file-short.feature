@@ -17,3 +17,10 @@ Feature: File resource validation (short syntax)
     Given "<BadChartPayload>" field "chart" is "<UndefinedFile>"
     When I attempt to define Helm Chart known as "<BadChart>" using "<BadChartPayload>"
     Then it should have failed with 'No Resource registered as "<UndefinedFile>"'
+
+  Scenario: Creating a fresh File on disk with real content
+    When I create File known as "<GeneratedFile>" at ".cache/resources-short/created.txt" with:
+      """
+      hello from a real write
+      """
+    Given File "<ProofFile>" at ".cache/resources-short/created.txt"

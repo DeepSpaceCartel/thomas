@@ -33,6 +33,10 @@ Feature: BDD Framework for the rest-api test fixture's Notes CRUD (full syntax)
       | body  | equals    | Milk, eggs |
 
     Given the value at "id" from the last response is known as "<NoteId>"
+    And the value at "title" from the last response is known as "<NoteTitle>"
+    Then the value known as "<NoteTitle>" equals "Groceries"
+    Given the value "Note <NoteId>" is known as "<NoteLabel>"
+    Then the value known as "<NoteLabel>" contains "<NoteId>"
 
     When I send a GET request to Endpoint known as "<NotesApi>" path "/notes/<NoteId>"
     Then the response status is 200

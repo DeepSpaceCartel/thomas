@@ -4,6 +4,7 @@ import { HelmRelease, helmReleaseFromFields, helmReleaseFromTable } from '../../
 import { chartRefToArgs } from '../../support/helm/chart_ref_args.js';
 import { buildArgs, outputFormatToArgs, runCommand } from '../../support/run_command.js';
 import { attempt } from '../../support/attempt.js';
+import { softSubstituteCapturedValue, substituteTableCapturedValues } from '../../support/http/capture.js';
 import { assertResultCondition, getPendingPayload } from '../common.step.js';
 
 function resolveChart(world: World, alias: string) {
@@ -11,7 +12,7 @@ function resolveChart(world: World, alias: string) {
 }
 
 Given('Helm Release known as {string}:', function (this: World, alias: string, dataTable: DataTable) {
-  this.helmReleases.set(alias, helmReleaseFromTable(dataTable, (a) => resolveChart(this, a)));
+  this.helmReleases.set(alias, helmReleaseFromTable(substituteTableCapturedValues(this, dataTable), (a) => resolveChart(this, a)));
 });
 
 // Oneline form - `chart`/`name`/`namespace` are always all three used
@@ -19,7 +20,7 @@ Given('Helm Release known as {string}:', function (this: World, alias: string, d
 // stays for the negative-path tests in
 // features/helm/helm-release-validation-{short,full}.feature.
 Given('Helm Release {string} of {string} named {string} in {string}', function (this: World, alias: string, chart: string, name: string, namespace: string) {
-  this.helmReleases.set(alias, helmReleaseFromFields({ chart, name, namespace }, (a) => resolveChart(this, a)));
+  this.helmReleases.set(alias, helmReleaseFromFields({ chart, name, namespace: softSubstituteCapturedValue(this, namespace) }, (a) => resolveChart(this, a)));
 });
 
 When('I attempt to define Helm Release known as {string}:', function (this: World, alias: string, dataTable: DataTable) {
@@ -63,8 +64,12 @@ function runHelmReleaseVerb(this: World, verb: string, alias: string, extraArgs:
 When('I {word} Helm Release known as {string}', function (this: World, verb: string, alias: string) {
   runHelmReleaseVerb.call(this, verb, alias, []);
 });
+// Soft substitution here too (not just construction tables) - a `--set
+// image.repository=...` value legitimately needs to embed a captured
+// value (e.g. a dynamic namespace baked into an in-cluster registry
+// hostname), the same real need a `namespace` PROPERTY field has.
 When('I {word} Helm Release known as {string} with:', function (this: World, verb: string, alias: string, table: DataTable) {
-  runHelmReleaseVerb.call(this, verb, alias, buildArgs(table));
+  runHelmReleaseVerb.call(this, verb, alias, buildArgs(substituteTableCapturedValues(this, table)));
 });
 When('I {word} Helm Release {string} with {flags}', function (this: World, verb: string, alias: string, flags: string[]) {
   runHelmReleaseVerb.call(this, verb, alias, flags);

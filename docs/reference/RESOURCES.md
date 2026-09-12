@@ -3,7 +3,9 @@
 Four resource types exist purely to be *constructed* and then referenced
 by other objects — none of them have real commands of their own except
 `Directory`, whose real commands (index/lint/package/dependency
-management, plus purging its contents) are documented alongside it here.
+management, plus purging its contents or creating a fresh one) are
+documented alongside it here, and `File`, which can likewise be created
+fresh with real content instead of only referencing an existing one.
 See [BDD conventions](../concepts/bdd-conventions.md#resource-substitution)
 for how `<Resource>` substitution works in general — the same `<...>`
 mechanism also resolves `Helm Release`/`HTTP Endpoint`/`HTTPS Endpoint`
@@ -74,6 +76,26 @@ filesystem operation, no `helm` invocation — used to restore a genuine
 When I purge Directory known as "<DownloadsDirectory>"
 ```
 
+### Create a fresh Directory
+
+```gherkin
+When I create Directory known as "<Resource>" at "<path>"
+```
+
+A real `mkdir -p`, then registers the alias — the counterpart to purging:
+that assumes the directory already exists, this makes a genuinely fresh
+one (e.g. somewhere to generate an SSH keypair or a self-signed
+certificate into). Idempotent — re-running it against the same path is a
+no-op if it's already there. The `<path>` argument is soft-substituted
+([captured-value substitution](../concepts/bdd-conventions.md#dynamic-value-capture)),
+so a worker-scoped path can embed a captured value (e.g. `<WorkerId>`
+under cucumber-js's own `--parallel`) — a literal path with no `<...>`
+token is unaffected.
+
+```gherkin
+When I create Directory known as "<KeypairDirectory>" at ".cache/ssh"
+```
+
 ## File
 
 === "Short"
@@ -121,6 +143,33 @@ Given File "<NginxChartFile>" at "./charts/test-nginx-0.1.0.tgz"
 And Helm Chart "<LocalArchiveNginxHelmChart>" in "<NginxChartFile>"
 ```
 A chart sourced from a local archive instead of a directory.
+
+### Create a fresh File
+
+```gherkin
+When I create File known as "<Resource>" at "<path>" with:
+  """
+  <real content>
+  """
+```
+
+A real `mkdir -p` of the parent directory followed by a real write, then
+registers the alias — for a scenario that needs a real file with known
+content on disk (a settings file, a generated trust-store config) rather
+than one already committed to the repo. Both `<path>` (soft-substituted,
+same as Directory's create action above) and `content` (strictly
+substituted) run through
+[captured-value substitution](../concepts/bdd-conventions.md#dynamic-value-capture),
+so either can embed a previously captured value (e.g. a dynamic namespace
+in a generated `buildkitd.toml` trust rule, or a worker-scoped path
+segment under `--parallel`).
+
+```gherkin
+When I create File known as "<SettingsFile>" at ".cache/settings.json" with:
+  """
+  {"buildkit": {"endpoint": "tcp://buildkit:1234"}}
+  """
+```
 
 ## URL
 

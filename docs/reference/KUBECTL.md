@@ -166,6 +166,36 @@ has been upgraded.
       | data."notes.py" | exists    |       |
     ```
 
+#### Creating a ConfigMap from a Real File
+
+```gherkin
+When I create ConfigMap known as {string} named {string} in {string} from file {string} at {string}
+```
+
+Every `ConfigMap` above is chart-managed — `helm uninstall` removes it
+automatically. This is the exception: a real `kubectl create configmap
+... --from-file=<key>=<path>` for content a chart needs mounted but has no
+values field for (e.g. seeding a CA cert into an app via a generic
+`extraVolumes`/`extraVolumeMounts` escape hatch, paired with `extraEnv` to
+point something like `GIT_SSL_CAINFO` at it). It has no `ownerReference`
+back to anything Helm tracks, so — unlike every other kind here — clean it
+up explicitly:
+
+```gherkin
+When I create ConfigMap known as "<CaCertConfigMap>" named "git-tls-ca" in "<Namespace>" from file "ca-cert.pem" at ".cache/fixtures/git-tls/ca-cert.pem"
+Then the command exited with 0
+...
+When I delete ConfigMap known as "<CaCertConfigMap>"
+Then the command exited with 0
+```
+
+Registers into the same alias map discovery uses, so the generic `When I
+delete {word} known as {string}` step is the real cleanup — not a second,
+bespoke step. Both `namespace` and the trailing `<path>` are
+soft-substituted, so either can embed a captured value (e.g. a
+worker-scoped path segment under cucumber-js's own `--parallel`), same as
+`namespace` already did.
+
 ### ReplicaSet
 
 !!! warning "Only safe against a release installed once and never upgraded again"
@@ -253,6 +283,34 @@ Then the command exited with 0
 discovered kind, not just `Secret` — it exists specifically for cases
 like this one where Helm doesn't own the cleanup.
 
+#### Creating a Secret from a Real File
+
+```gherkin
+When I create Secret known as {string} named {string} in {string} from file {string} at {string}
+```
+
+The `Secret` sibling of [Creating a ConfigMap from a Real File](#creating-a-configmap-from-a-real-file)
+above — a real `kubectl create secret generic ... --from-file=<key>=<path>`,
+for content no chart values field can express. Distinct from a chart's
+own self-managed Secret built from array-index `--set`/`--set-file`
+values (e.g. `gitCredentials.entries[0].privateKey=<path>`, which
+Helm's own template renders into a well-formed JSON array) — this one is
+for seeding deliberately arbitrary or malformed real content (e.g. a
+negative-path "malformed credentials file" scenario), which no chart
+value shape can produce:
+
+```gherkin
+When I create File known as "<BadCredsFile>" at ".cache/fixtures/bad-git-creds.json" with:
+  """
+  { this is not valid JSON
+  """
+When I create Secret known as "<BadCredsSecret>" named "bad-git-creds" in "<Namespace>" from file "git-credentials.json" at ".cache/fixtures/bad-git-creds.json"
+Then the command exited with 0
+```
+
+Same real gap as the ConfigMap form: no `ownerReference` back to any Helm
+release, so `I delete Secret known as {string}` is the real cleanup.
+
 ### Progressive Discovery
 
 A second, additive construction style for any kind above — the same
@@ -272,6 +330,31 @@ known until the last `And` line, so the real check happens then, with
 the same "expected exactly one match" error as the table form. The
 table form is unchanged and still resolves immediately; use whichever
 reads better for the number of predicates a scenario actually needs.
+
+#### Waiting for a fire-and-forget rollout's object to become discoverable
+
+```gherkin
+When I wait for Pod known as "<Resource>" every "<interval>" for up to "<timeout>"
+```
+
+That first real discovery (whichever style built it) is still eager and
+one-shot — fine when something already waited for real readiness first
+(`--atomic`/`--wait`), wrong for a deliberate fire-and-forget rollout
+(no `--wait`): the object may genuinely not exist yet the instant `helm
+upgrade` returns. This retries real discovery itself — not a field of an
+already-known object — tolerating "not found yet" until it succeeds or
+the timeout elapses:
+
+```gherkin
+Given Pod "<AppPod>"
+And "<AppPod>" namespace is "dev"
+And "<AppPod>" label "app.kubernetes.io/instance" is "my-release"
+When I wait for Pod known as "<AppPod>" every "2s" for up to "30s"
+```
+
+Works for any kind in the [Discovery](#discovery) section above, not just
+`Pod`. Pairs naturally with polling the *object's own* fields right after
+(e.g. `status.podIP`) — see [Polling](#polling) below.
 
 ## Querying
 
@@ -591,6 +674,42 @@ Then the command exited with 1
 This Pod's real ServiceAccount is the namespace's `default` (the chart
 declares none), which genuinely cannot create Deployments under standard
 RBAC — a real, true assertion, not a fixture rigged to fail.
+
+## Labeling a Namespace
+
+```gherkin
+When I label namespace "<name>" with:
+When I label namespace "<name>" with {flags}
+```
+
+Stateless — no alias registered or resolved (a namespace, usually one
+just created via `--create-namespace` on a Helm install, has no object
+of its own in this suite). `name` goes through the same [soft
+captured-value substitution](../concepts/bdd-conventions.md#dynamic-value-capture)
+as any other namespace field, so a dynamically-computed namespace works
+here too. Runs a real `kubectl label namespace <name> ...args`.
+
+**`kubectl label`'s real argv is `KEY=VALUE` as one token, not `--flag
+value`** — write the label as a positional (blank `OPTION`) row, not an
+`OPTION` row:
+
+```gherkin
+When I label namespace "<Namespace>" with:
+  | OPTION      | VALUE                                         |
+  |             | pod-security.kubernetes.io/enforce=privileged |
+  | --overwrite | True                                          |
+Then the command exited with 0
+```
+
+The real, motivating use: a per-run disposable BuildKit instance needs
+privileged (or rootless-unconfined) execution, which a cluster's default
+`baseline` PodSecurity level blocks — labeling the namespace this way
+before installing BuildKit into it is what unblocks that. A trailing
+`-` on the key removes it (`kubectl label`'s own real syntax):
+
+```gherkin
+When I label namespace "<Namespace>" with --overwrite thomas.test/label-
+```
 
 ## TLS Certificates
 
