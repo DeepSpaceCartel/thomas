@@ -20,7 +20,7 @@ jobs:
     runs-on: thomas
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Same install mechanism real-tests.yml uses - see docs/project/ci.md.
       - name: Install latest helm/kubectl
