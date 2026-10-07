@@ -587,8 +587,9 @@ else.
 
 !!! note "`helm install` is genuinely not idempotent"
     A second install of the same release name errors
-    (`cannot re-use a name that is still in use`) — that's real, correct
-    Helm behavior, not a framework limitation. The rerun-safe idiom used
+    (`cannot reuse a name that is still in use` — Helm v3 spelled it
+    `re-use`, so the scenarios match only the shared tail) — that's real,
+    correct Helm behavior, not a framework limitation. The rerun-safe idiom used
     throughout this suite is `upgrade` with `--install`/`--atomic` set
     (see the "upgrade" tab below).
 
@@ -634,7 +635,7 @@ registered Release first.
     When I install Helm Release "<DuplicateRelease>" with --create-namespace
     Then the command exited with 0
     When I install Helm Release known as "<DuplicateRelease>"
-    Then the command exited with 1 STDERR contains "cannot re-use a name"
+    Then the command exited with 1 STDERR contains "name that is still in use"
     ```
 
 === "Full"
