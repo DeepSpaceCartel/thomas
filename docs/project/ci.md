@@ -133,7 +133,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: thomas-ci
-    namespace: thomas-helm-test
+    namespace: arc-runners # where the runner's ServiceAccount really lives
 roleRef:
   kind: ClusterRole
   name: thomas-ci-namespace-label
