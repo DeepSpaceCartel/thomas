@@ -39,6 +39,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Node 26's official Linux build links libatomic.so.1, which the
+      # self-hosted runner image doesn't ship (GitHub-hosted runners do).
+      - name: Install libatomic1 for Node 26
+        run: |
+          if ! ldconfig -p | grep -q 'libatomic\.so\.1'; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq libatomic1
+          fi
+
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
