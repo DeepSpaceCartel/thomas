@@ -16,7 +16,7 @@
   "scripts": {
     "test": "NODE_OPTIONS='--import tsx' cucumber-js",
     "test:ff": "NODE_OPTIONS='--import tsx' cucumber-js --fail-fast",
-    "test:verbose": "NODE_OPTIONS='--import tsx' cucumber-js --format @cucumber/pretty-formatter",
+    "test:verbose": "NODE_OPTIONS='--import tsx' cucumber-js --format pretty",
     "test:usage": "NODE_OPTIONS='--import tsx' cucumber-js --format usage",
     "test:junit": "NODE_OPTIONS='--import tsx' cucumber-js --format junit:report.xml",
     "docs:serve": "mkdocs serve",
@@ -29,7 +29,6 @@
   },
   "devDependencies": {
     "@cucumber/cucumber": "^13.2.1",
-    "@cucumber/pretty-formatter": "^4.0.2",
     "@types/jmespath": "^0.15.2",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.19.43",
