@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **`@cucumber/cucumber` 13** (peer `^13.2.1`, was `^12.2.0`). Its `--parallel`
+  workers are worker threads now, which don't get the `tsx` loader that
+  `cucumber.mjs` registers: every `test*` script sets
+  `NODE_OPTIONS='--import tsx'` (consumers running in parallel need the same).
+  `engines` is `node >=26` (cucumber 13 dropped Node 20); CI, the dev
+  container and `@types/node` all track Node 26, via `.nvmrc` in CI.
+
 ### Added
 
 - **Every `assertCondition` failure now points at the current scenario's

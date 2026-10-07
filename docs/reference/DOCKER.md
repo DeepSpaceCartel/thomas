@@ -146,9 +146,15 @@ via `fixtures/docker/buildkitd.toml` to trust that registry as plain
 HTTP) into `thomas-helm-test`, then build and push a real image
 (`fixtures/docker/Dockerfile`) end to end.
 
-**Prerequisite**: a real BuildKit pod needs privileged (or
+**PodSecurity**: a real BuildKit pod needs privileged (or
 rootless-but-unconfined) execution, which the cluster's default
-`baseline` PodSecurity level blocks. `thomas-helm-test` is labeled
-`pod-security.kubernetes.io/enforce: privileged` to allow this — a
-one-time, namespace-scoped setup step, not something these feature
-files do themselves.
+`baseline` PodSecurity level blocks. Each scenario labels
+`thomas-helm-test` `pod-security.kubernetes.io/enforce=privileged`
+([`I label namespace`](KUBECTL.md)) right before installing BuildKit,
+and removes the label again right after uninstalling it — so a
+recreated namespace needs no manual setup, and it only stays privileged
+for as long as BuildKit runs (unless a scenario fails mid-way, in which
+case the label is left behind until the next successful run). Labeling
+a namespace needs cluster-scoped access CI's `ServiceAccount` doesn't
+have, so both features are tagged `@requires-broad-rbac` and skipped in
+CI — see [CI](../project/ci.md#requires-broad-rbac-scenarios-that-deliberately-cant-run-here).

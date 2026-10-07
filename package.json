@@ -1,6 +1,6 @@
 {
   "name": "thomas",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Real (no-mocks) BDD step implementations for Helm, kubectl, and HTTP testing of k8s-native applications.",
   "license": "MIT",
   "type": "module",
@@ -14,25 +14,24 @@
     "./support/*": "./features/support/*.ts"
   },
   "scripts": {
-    "test": "cucumber-js",
-    "test:ff": "cucumber-js --fail-fast",
-    "test:verbose": "cucumber-js --format @cucumber/pretty-formatter",
-    "test:usage": "cucumber-js --format usage",
-    "test:junit": "cucumber-js --format junit:report.xml",
+    "test": "NODE_OPTIONS='--import tsx' cucumber-js",
+    "test:ff": "NODE_OPTIONS='--import tsx' cucumber-js --fail-fast",
+    "test:verbose": "NODE_OPTIONS='--import tsx' cucumber-js --format pretty",
+    "test:usage": "NODE_OPTIONS='--import tsx' cucumber-js --format usage",
+    "test:junit": "NODE_OPTIONS='--import tsx' cucumber-js --format junit:report.xml",
     "docs:serve": "mkdocs serve",
     "docs:build": "mkdocs build --strict",
     "install:tools": "bash scripts/tools.sh"
   },
   "peerDependencies": {
-    "@cucumber/cucumber": "^12.2.0",
+    "@cucumber/cucumber": "^13.2.1",
     "tsx": "^4.19.0"
   },
   "devDependencies": {
-    "@cucumber/cucumber": "^12.2.0",
-    "@cucumber/pretty-formatter": "^4.0.2",
+    "@cucumber/cucumber": "^13.2.1",
     "@types/jmespath": "^0.15.2",
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^20.19.43",
+    "@types/node": "^26.6.4",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0"
   },
@@ -40,5 +39,8 @@
     "jmespath": "^0.16.0",
     "js-yaml": "^4.1.0",
     "undici": "7.29.1"
+  },
+  "engines": {
+    "node": ">=26"
   }
 }

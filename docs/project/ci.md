@@ -32,8 +32,13 @@ open one, and the runner pod's own in-cluster identity has real write
 access to the cluster (see below) — not something a fork PR's workflow
 run is trusted with.
 
-`concurrency: {group: real-tests, cancel-in-progress: false}` —
-serializes every run. `thomas-helm-test` is one fixed, shared
+The `test` job's `concurrency: {group: real-tests, cancel-in-progress:
+false}` serializes every run. A second, workflow-level group per ref
+(`real-tests-${{ github.ref }}`, `cancel-in-progress` on pull requests
+only) cancels a PR's older run — running or still queued — when a newer
+commit is pushed, so a stale commit never holds that one slot; the
+graceful cancel still runs the `if: always()` uninstall step. Pushes to
+`main` are never cancelled. `thomas-helm-test` is one fixed, shared
 namespace (not one per run), and this cluster has already shown real
 fragility under concurrent/shared use elsewhere on it — see
 `rts-turbo`'s own `ci.yml` for the same tradeoff made the same way.
@@ -124,6 +129,15 @@ first. Widening the CI `ServiceAccount` to cover an arbitrary second
 namespace just for one demo scenario isn't worth trading away the
 narrow-RBAC guarantee above for — this scenario still runs for anyone
 with broader cluster access, same as before.
+
+Both `features/docker/` features carry it too: they label
+`thomas-helm-test` itself `pod-security.kubernetes.io/enforce=privileged`
+for BuildKit's privileged pod (see [DOCKER.md](../reference/DOCKER.md)).
+A `Namespace` is a cluster-scoped object, which the namespaced `Role`
+above can't grant anything on — running them in CI would need an extra
+`ClusterRole`/`ClusterRoleBinding` (`get`/`patch` on `namespaces`,
+`resourceNames: ["thomas-helm-test"]`, bound to
+`arc-runners:thomas-ci`), deliberately not set up for now.
 
 ## Tool versions: `scripts/tools.sh` (`npm run install:tools`)
 

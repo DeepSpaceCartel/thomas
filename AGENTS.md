@@ -246,10 +246,12 @@ with MkDocs + Material).
   real image, scoped `--registry-credentials` via a `runCommand` `env`
   option) — shipped, verified. Resources: 20/20 scenarios passing.
   Docker: 12/12 scenarios passing against a real, disposable BuildKit +
-  registry pair in `thomas-helm-test` (which required labeling that
-  namespace `pod-security.kubernetes.io/enforce: privileged` — BuildKit
-  needs privileged/rootless-unconfined execution the default `baseline`
-  level blocks), run twice in a row, cluster confirmed clean both times
+  registry pair in `thomas-helm-test` (the scenarios themselves label
+  that namespace `pod-security.kubernetes.io/enforce=privileged` before
+  installing BuildKit and remove it after — BuildKit needs
+  privileged/rootless-unconfined execution the default `baseline` level
+  blocks; tagged `@requires-broad-rbac`, so skipped in CI — see
+  `docs/project/ci.md`), run twice in a row, cluster confirmed clean both times
   (allowing a few seconds for normal terminating-Pod GC lag after
   `helm uninstall --wait` — a transient "Error" status during container
   shutdown, not a real leftover, see `docker-buildx-builder-full.feature`'s
