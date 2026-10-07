@@ -48,5 +48,5 @@ body:
       placeholder: |
         helm version: v3.x
         kubectl version: v1.x
-        node version: v20.x
+        node version: v22.x
         cluster: kind / EKS / GKE / ...
