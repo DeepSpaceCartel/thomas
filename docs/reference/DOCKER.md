@@ -154,6 +154,7 @@ rootless-but-unconfined) execution, which the cluster's default
 and removes the label again right after uninstalling it — so a
 recreated namespace needs no manual setup, and it only stays privileged
 for as long as BuildKit runs (unless a scenario fails mid-way, in which
-case the label is left behind until the next successful run). In CI
-this needs a cluster-scoped grant to patch that one namespace — see
-[CI: Cluster access](../project/ci.md#cluster-access-the-runner-pods-own-in-cluster-identity).
+case the label is left behind until the next successful run). Labeling
+a namespace needs cluster-scoped access CI's `ServiceAccount` doesn't
+have, so both features are tagged `@requires-broad-rbac` and skipped in
+CI — see [CI](../project/ci.md#requires-broad-rbac-scenarios-that-deliberately-cant-run-here).

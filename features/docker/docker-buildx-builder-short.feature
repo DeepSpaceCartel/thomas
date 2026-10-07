@@ -1,3 +1,7 @@
+# Labels thomas-helm-test itself (a cluster-scoped Namespace object) for
+# BuildKit's privileged pod, which the narrowly-scoped CI ServiceAccount
+# can't do - see docs/project/ci.md.
+@requires-broad-rbac
 Feature: BDD Framework for Docker Buildx Builders (short syntax)
   As a platform engineer
   I want to create, use, and remove a real `docker buildx` builder backed

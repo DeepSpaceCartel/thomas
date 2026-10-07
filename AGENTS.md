@@ -250,7 +250,8 @@ with MkDocs + Material).
   that namespace `pod-security.kubernetes.io/enforce=privileged` before
   installing BuildKit and remove it after — BuildKit needs
   privileged/rootless-unconfined execution the default `baseline` level
-  blocks; CI's grant for this is in `docs/project/ci.md`), run twice in a row, cluster confirmed clean both times
+  blocks; tagged `@requires-broad-rbac`, so skipped in CI — see
+  `docs/project/ci.md`), run twice in a row, cluster confirmed clean both times
   (allowing a few seconds for normal terminating-Pod GC lag after
   `helm uninstall --wait` — a transient "Error" status during container
   shutdown, not a real leftover, see `docker-buildx-builder-full.feature`'s
