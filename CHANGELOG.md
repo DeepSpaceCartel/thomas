@@ -13,7 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   workers are worker threads now, which don't get the `tsx` loader that
   `cucumber.mjs` registers: every `test*` script sets
   `NODE_OPTIONS='--import tsx'` (consumers running in parallel need the same).
-  `engines` is `node >=22`, as cucumber 13 dropped Node 20.
+  `engines` is `node >=26` (cucumber 13 dropped Node 20); CI, the dev
+  container and `@types/node` all track Node 26, via `.nvmrc` in CI.
 
 ### Added
 
