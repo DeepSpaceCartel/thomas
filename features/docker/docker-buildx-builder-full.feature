@@ -33,7 +33,13 @@ Feature: BDD Framework for Docker Buildx Builders (full table syntax)
     # test registry as plain HTTP - no mocks, and no dependency on any
     # BuildKit instance outside Thomas's own control. Needs a namespace
     # whose PodSecurity level allows a privileged (or rootless-unconfined)
-    # pod - see docs/reference/DOCKER.md.
+    # pod, so the scenario raises it here and drops it back after
+    # uninstalling BuildKit - see docs/reference/DOCKER.md.
+    When I label namespace "thomas-helm-test" with:
+      | OPTION      | VALUE                                         |
+      |             | pod-security.kubernetes.io/enforce=privileged |
+      | --overwrite | True                                          |
+    Then the command exited with 0
     Given Helm Chart known as "<BuildkitChart>":
       | PROPERTY | VALUE              |
       | chart    | buildkit-service   |
@@ -66,6 +72,10 @@ Feature: BDD Framework for Docker Buildx Builders (full table syntax)
     When I uninstall Helm Release known as "<BuildkitRelease>" with:
       | OPTION  | VALUE |
       | --wait  | True  |
+    Then the command exited with 0
+    When I label namespace "thomas-helm-test" with:
+      | OPTION | VALUE                               |
+      |        | pod-security.kubernetes.io/enforce- |
     Then the command exited with 0
     When I uninstall Helm Release known as "<TestRegistryRelease>" with:
       | OPTION  | VALUE |

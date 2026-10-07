@@ -107,6 +107,44 @@ Assumes
 `thomas-helm-test` already exists — this scoped `ServiceAccount` can't
 create namespaces itself.
 
+The one cluster-scoped exception: the Docker scenarios label
+`thomas-helm-test` itself `pod-security.kubernetes.io/enforce=privileged`
+for BuildKit (and remove it afterwards — see
+[DOCKER.md](../reference/DOCKER.md)). A `Namespace` is a cluster-scoped
+object, which a namespaced `Role` can't grant anything on, so this
+needs a `ClusterRole` — pinned by `resourceNames` to that one namespace,
+not namespaces in general:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: thomas-ci-namespace-label
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    resourceNames: ["thomas-helm-test"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: thomas-ci-namespace-label
+subjects:
+  - kind: ServiceAccount
+    name: thomas-ci
+    namespace: thomas-helm-test
+roleRef:
+  kind: ClusterRole
+  name: thomas-ci-namespace-label
+  apiGroup: rbac.authorization.k8s.io
+```
+
+This does let CI raise its own namespace to `privileged` — the
+namespace is meant to allow that for BuildKit anyway; the grant just
+moves the label from a manual setup step into the scenarios that need
+it.
+
 ### `@requires-broad-rbac`: scenarios that deliberately can't run here
 
 `real-tests.yml` runs with `--tags "not @requires-broad-rbac"`.

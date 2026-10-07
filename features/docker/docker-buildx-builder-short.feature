@@ -17,7 +17,9 @@ Feature: BDD Framework for Docker Buildx Builders (short syntax)
     # A real, disposable BuildKit instance trusting our real, disposable
     # test registry as plain HTTP - see docker-buildx-builder-full.feature's
     # Background for why, and docs/reference/DOCKER.md for the namespace
-    # PodSecurity prerequisite.
+    # PodSecurity label raised here and dropped after uninstalling BuildKit.
+    When I label namespace "thomas-helm-test" with --overwrite pod-security.kubernetes.io/enforce=privileged
+    Then the command exited with 0
     Given Helm Chart known as "<BuildkitChart>":
       | PROPERTY | VALUE              |
       | chart    | buildkit-service   |
@@ -35,6 +37,8 @@ Feature: BDD Framework for Docker Buildx Builders (short syntax)
     When I remove Docker Buildx Builder known as "<Builder>"
     Then the command exited with 0
     When I uninstall Helm Release "<BuildkitRelease>" with --wait
+    Then the command exited with 0
+    When I label namespace "thomas-helm-test" with pod-security.kubernetes.io/enforce-
     Then the command exited with 0
     When I uninstall Helm Release "<TestRegistryRelease>" with --wait
     Then the command exited with 0
