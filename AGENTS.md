@@ -144,16 +144,30 @@ fixtures/
   built the way it is (no custom image, health probes, in-memory/on-disk
   storage). Read before adding an endpoint or changing a health probe.
 
-Six more skills are general-purpose, not Thomas-specific, and live in
-[DeepSpaceCartel/skills](https://github.com/DeepSpaceCartel/skills)
-instead — install the pack with `npx skills add DeepSpaceCartel/skills`,
-or browse them there, and read the relevant one when the task at hand
-matches, regardless of which project you're in: `keepachangelog` (writing
-a `CHANGELOG.md`), `semver` (version numbers), `conventionalcommits`
-(commit message format), `adr` (recording an architectural decision),
-`docs` (the Divio tutorial/how-to/reference/explanation framework — what
-this repo's own `docs/` layout follows), `mkdocs` (building a docs site
-with MkDocs + Material).
+The rest of `skills-lock.json` — 23 general-purpose skills, not
+Thomas-specific — comes from
+[DeepSpaceCartel/skills](https://github.com/DeepSpaceCartel/skills).
+Restore them from the lock with `npx skills experimental_install`
+(`.agents/skills/*` other than `thomas/` is gitignored), or browse them
+there, and read the relevant one when the task at hand matches,
+regardless of which project you're in:
+
+- **Most relevant here**: `gherkin` (writing `.feature` files),
+  `helm-charts` (the fixture charts under `charts/`), `github-actions`
+  (`.github/workflows/`), `dependabot` (`.github/dependabot.yml`),
+  `devcontainer` (`.devcontainer/`), `container-images` (Dockerfiles,
+  e.g. `fixtures/docker/`).
+- **Project hygiene**: `keepachangelog` (writing a `CHANGELOG.md`),
+  `semver` (version numbers), `conventionalcommits` (commit message
+  format), `adr` (recording an architectural decision), `docs` (the Divio
+  tutorial/how-to/reference/explanation framework — what this repo's own
+  `docs/` layout follows), `mkdocs` (building a docs site with MkDocs +
+  Material), `skill` (writing Agent Skills, e.g. `.agents/skills/thomas/`).
+- **General engineering**: `core-principles`, `engineering-practices`,
+  `structured-logging`, `owasp-asvs`.
+- **API/format specs**: `openapi`, `json-schema`, `jsonapi`, `rfc9457`,
+  `cloudevents`.
+- **Other**: `terraform-provider`.
 
 ## Real-command discipline (non-negotiable, don't relax these)
 
