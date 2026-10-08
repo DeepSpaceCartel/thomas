@@ -38,6 +38,9 @@ Writing or reading a `.feature` file against steps that already exist —
 | Helm | [`references/helm.md`](references/helm.md) | `Directory`, Chart, Repository, Release — lint/package/template/show, repo add/remove/list, install/upgrade/rollback/get/list |
 | kubectl | [`references/kubectl.md`](references/kubectl.md) | `Deployment`, `Service`, `Pod`, `ConfigMap`, `ReplicaSet`, `Secret` — label-selector discovery, get/events/logs, polling, exec, RBAC (`kubectl auth can-i`), TLS certificate inspection |
 | HTTP/HTTPS | [`references/rest.md`](references/rest.md) | HTTP/HTTPS Endpoint — sending a request (headers/query/JSON/multipart), asserting the response, capturing a server-generated value for later use |
+| Docker | [`references/docker.md`](references/docker.md) | `Docker Buildx Builder` — create/remove a real remote-BuildKit builder, build and push a real image, scoped registry credentials |
+| SSH | [`references/ssh.md`](references/ssh.md) | `SSH Key Pair` — generate a real keypair, scan a real host key |
+| TLS | [`references/tls.md`](references/tls.md) | `Self-Signed CA`, `TLS Certificate` — generate a real CA and a real certificate it signs |
 
 Every reference cites real, runnable scenarios under
 `features/{helm,k8s,rest}/*.feature` — use those files as the canonical

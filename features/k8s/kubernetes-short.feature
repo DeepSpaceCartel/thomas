@@ -108,3 +108,33 @@ Feature: BDD Framework for real k8s resources created by a Helm Release (short s
 
     When I uninstall Helm Release known as "<NginxRelease>"
     Then the command exited with 0
+
+  Scenario: Discovering a real resource using a namespace built from a captured environment variable
+    Given the value of environment variable "THOMAS_DOES_NOT_EXIST", or "USER", or "nobody" is known as "<Owner>"
+    And the value "thomas-helm-test" is known as "<CapturedNamespace>"
+
+    Given Directory "<CapturedNsChartDirectory>" at "./charts/test-nginx"
+    And Helm Chart "<CapturedNsHelmChart>" in "<CapturedNsChartDirectory>"
+    And Helm Release "<CapturedNsRelease>" of "<CapturedNsHelmChart>" named "thomas-captured-ns-release-short" in "<CapturedNamespace>"
+    When I upgrade Helm Release "<CapturedNsRelease>" with --install --atomic --create-namespace
+    Then the command exited with 0
+
+    Given Deployment "<CapturedNsDeployment>"
+    And "<CapturedNsDeployment>" namespace is "<CapturedNamespace>"
+    And "<CapturedNsDeployment>" label "app.kubernetes.io/instance" is "thomas-captured-ns-release-short"
+    When I get Deployment "<CapturedNsDeployment>" as JSON
+    Then the command exited with 0
+
+    When I uninstall Helm Release known as "<CapturedNsRelease>"
+    Then the command exited with 0
+
+  Scenario: Capturing an environment variable with a single fallback default
+    Given the value of environment variable "THOMAS_DOES_NOT_EXIST" or "fallback-value" is known as "<SingleFallbackValue>"
+    Then the value known as "<SingleFallbackValue>" equals "fallback-value"
+
+  Scenario: Labeling a real namespace
+    When I label namespace "thomas-helm-test" with --overwrite thomas.test/label-short=probe
+    Then the command exited with 0 STDOUT contains labeled
+
+    When I label namespace "thomas-helm-test" with --overwrite thomas.test/label-short-
+    Then the command exited with 0

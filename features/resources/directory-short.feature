@@ -17,3 +17,7 @@ Feature: Directory resource validation (short syntax)
     Given "<BadChartPayload>" field "chart" is "<UndefinedDirectory>"
     When I attempt to define Helm Chart known as "<BadChart>" using "<BadChartPayload>"
     Then it should have failed with 'No Resource registered as "<UndefinedDirectory>"'
+
+  Scenario: Creating a fresh Directory on disk
+    When I create Directory known as "<GeneratedDirectory>" at ".cache/resources-short/created"
+    Given Directory "<ProofDirectory>" at ".cache/resources-short/created"

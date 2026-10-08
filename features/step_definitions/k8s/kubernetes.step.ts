@@ -10,6 +10,7 @@ import { configMapFromTable } from '../../support/k8s/configmap.js';
 import { replicaSetFromTable } from '../../support/k8s/replicaset.js';
 import { fetchCertPem, secretFromFields, secretFromTable } from '../../support/k8s/secret.js';
 import { discoverByFields, K8sObjectRef } from '../../support/k8s/discover.js';
+import { softSubstituteCapturedValue, substituteTableCapturedValues } from '../../support/http/capture.js';
 import { buildArgs, CommandResult, outputFormatToArgs, runCommand } from '../../support/run_command.js';
 import { attempt } from '../../support/attempt.js';
 import { parseDuration, pollUntil } from '../../support/poll.js';
@@ -17,7 +18,7 @@ import { query } from '../../support/query.js';
 import { assertResultCondition, getPendingPayload } from '../common.step.js';
 
 Given('Deployment known as {string}:', function (this: World, alias: string, dataTable: DataTable) {
-  this.deployments.set(alias, deploymentFromTable(dataTable));
+  this.deployments.set(alias, deploymentFromTable(substituteTableCapturedValues(this, dataTable)));
 });
 
 When('I attempt to define Deployment known as {string}:', function (this: World, alias: string, dataTable: DataTable) {
@@ -27,7 +28,7 @@ When('I attempt to define Deployment known as {string}:', function (this: World,
 });
 
 Given('Service known as {string}:', function (this: World, alias: string, dataTable: DataTable) {
-  this.services.set(alias, serviceFromTable(dataTable));
+  this.services.set(alias, serviceFromTable(substituteTableCapturedValues(this, dataTable)));
 });
 
 When('I attempt to define Service known as {string}:', function (this: World, alias: string, dataTable: DataTable) {
@@ -37,7 +38,7 @@ When('I attempt to define Service known as {string}:', function (this: World, al
 });
 
 Given('Pod known as {string}:', function (this: World, alias: string, dataTable: DataTable) {
-  this.pods.set(alias, podFromTable(dataTable));
+  this.pods.set(alias, podFromTable(substituteTableCapturedValues(this, dataTable)));
 });
 
 When('I attempt to define Pod known as {string}:', function (this: World, alias: string, dataTable: DataTable) {
@@ -47,7 +48,7 @@ When('I attempt to define Pod known as {string}:', function (this: World, alias:
 });
 
 Given('ConfigMap known as {string}:', function (this: World, alias: string, dataTable: DataTable) {
-  this.configMaps.set(alias, configMapFromTable(dataTable));
+  this.configMaps.set(alias, configMapFromTable(substituteTableCapturedValues(this, dataTable)));
 });
 
 When('I attempt to define ConfigMap known as {string}:', function (this: World, alias: string, dataTable: DataTable) {
@@ -56,11 +57,29 @@ When('I attempt to define ConfigMap known as {string}:', function (this: World, 
   });
 });
 
+// A real `kubectl create configmap ... --from-file=<key>=<path>` - unlike
+// every other ConfigMap this suite touches (chart-managed, torn down by
+// `helm uninstall` automatically), one created this way has no
+// ownerReference back to any Helm release and is left behind unless
+// deleted explicitly - registers into the same `world.configMaps` map
+// discovery uses, so the already-generic `I delete {word} known as
+// {string}` step (see its own comment above, which already anticipated
+// exactly this case) is the cleanup, not a second bespoke step. The
+// motivating real case: mounting a CA cert into a pod via a chart's
+// generic `extraVolumes`/`extraVolumeMounts` escape hatch (e.g.
+// `GIT_SSL_CAINFO`) - content that needs to exist as a real file inside
+// the pod, which a Helm value alone can't produce.
+When('I create ConfigMap known as {string} named {string} in {string} from file {string} at {string}', function (this: World, alias: string, name: string, namespace: string, key: string, filePath: string) {
+  const ns = softSubstituteCapturedValue(this, namespace);
+  this.lastCommandResult = runCommand('kubectl', ['create', 'configmap', name, '-n', ns, `--from-file=${key}=${softSubstituteCapturedValue(this, filePath)}`]);
+  this.configMaps.set(alias, { name, namespace: ns });
+});
+
 // See support/k8s/replicaset.ts's header comment - only safe to register
 // against a release that has been installed once and never upgraded/
 // rolled back again, or the "exactly one match" check below fails.
 Given('ReplicaSet known as {string}:', function (this: World, alias: string, dataTable: DataTable) {
-  this.replicaSets.set(alias, replicaSetFromTable(dataTable));
+  this.replicaSets.set(alias, replicaSetFromTable(substituteTableCapturedValues(this, dataTable)));
 });
 
 When('I attempt to define ReplicaSet known as {string}:', function (this: World, alias: string, dataTable: DataTable) {
@@ -70,7 +89,7 @@ When('I attempt to define ReplicaSet known as {string}:', function (this: World,
 });
 
 Given('Secret known as {string}:', async function (this: World, alias: string, dataTable: DataTable) {
-  this.secrets.set(alias, await secretFromTable(dataTable));
+  this.secrets.set(alias, await secretFromTable(substituteTableCapturedValues(this, dataTable)));
 });
 
 // Payload-accumulator sibling - goes through the exact same real
@@ -84,6 +103,22 @@ When('I attempt to define Secret known as {string}:', function (this: World, ali
   return attempt(this, async () => {
     this.secrets.set(alias, await secretFromTable(dataTable));
   });
+});
+
+// Real `kubectl create secret generic ... --from-file=<key>=<path>` - the
+// Secret sibling of "I create ConfigMap known as ... from file ..."
+// above (same comment applies: no ownerReference, `I delete` is the real
+// cleanup). Distinct from a chart's own self-managed Secret (e.g.
+// gitCredentials.entries rendered via a real `--set-file
+// gitCredentials.entries[0].privateKey=<path>` - see docs/reference/
+// KUBECTL.md) - that path only ever produces a well-formed JSON array;
+// this one is for seeding deliberately arbitrary/malformed real content
+// (e.g. a negative-path "malformed git-credentials.json" scenario) no
+// chart values field can express.
+When('I create Secret known as {string} named {string} in {string} from file {string} at {string}', function (this: World, alias: string, name: string, namespace: string, key: string, filePath: string) {
+  const ns = softSubstituteCapturedValue(this, namespace);
+  this.lastCommandResult = runCommand('kubectl', ['create', 'secret', 'generic', name, '-n', ns, `--from-file=${key}=${softSubstituteCapturedValue(this, filePath)}`]);
+  this.secrets.set(alias, { name, namespace: ns });
 });
 
 // One place mapping a lowercase kubectl kind word (the Gherkin {word}
@@ -160,11 +195,44 @@ function getPendingSelector(world: World, alias: string) {
 }
 
 Given('{string} namespace is {string}', function (this: World, alias: string, namespace: string) {
-  getPendingSelector(this, alias).namespace = namespace;
+  getPendingSelector(this, alias).namespace = softSubstituteCapturedValue(this, namespace);
 });
 
 Given('{string} label {string} is {string}', function (this: World, alias: string, key: string, value: string) {
   getPendingSelector(this, alias).labels[key] = value;
+});
+
+// A progressive selector's own discovery (getRegisteredObject) is
+// eager and one-shot - fine for a Helm install that actually waited
+// (--atomic/--wait, so the Deployment/Service/Pod already exist by the
+// time anything discovers them), but wrong for a deliberate fire-and-
+// forget rollout (no --wait): the real object plausibly doesn't exist
+// for real yet at the exact moment discovery first runs. This retries
+// discovery itself - not a field of an already-known object, the
+// resource actually coming into existence - tolerating "not found yet"
+// as retryable and only registering once real, unambiguous discovery
+// succeeds.
+When('I wait for {word} known as {string} every {string} for up to {string}', function (this: World, kind: string, alias: string, interval: string, timeout: string) {
+  const lowerKind = kind.toLowerCase();
+  const entry = KIND_REGISTRY[lowerKind];
+  if (!entry) {
+    throw new Error(`Unknown Kubernetes kind "${kind}" (known kinds: ${Object.keys(KIND_REGISTRY).join(', ')})`);
+  }
+  const pending = getPendingSelector(this, alias);
+  if (pending.kind !== lowerKind) {
+    throw new Error(`Pending selector "${alias}" was registered as "${pending.kind}", not "${lowerKind}"`);
+  }
+  const world = this;
+  return pollUntil(parseDuration(interval), parseDuration(timeout), () => {
+    try {
+      const obj = discoverByFields(lowerKind, { namespace: pending.namespace ?? '', ...pending.labels });
+      entry.map(world).set(alias, obj);
+      world.pendingSelectors.delete(alias);
+      return { rows: [{ label: 'discovered', actual: true, condition: 'equals', expected: 'true', outcome: 'pass' }], snapshot: JSON.stringify(obj) };
+    } catch (e) {
+      return { rows: [{ label: 'discovered', actual: false, condition: 'equals', expected: 'true', outcome: 'pass' }], snapshot: e instanceof Error ? e.message : String(e) };
+    }
+  });
 });
 
 function assertLogsSupported(kind: string): void {
@@ -340,6 +408,15 @@ When('I poll logs for Pod known as {string} every {string} for up to {string} un
   return pollRawText(this, interval, timeout, table, () => kubectlLogs(pod, 'pod', []));
 });
 
+// Flags-accepting sibling of the step above - needed for `--previous`
+// (a crash-looping container's *previous* terminated instance's logs can
+// lag real restarts by a few ticks, so this needs the same real retry
+// loop the no-flags form gets, not a one-shot `kubectl logs --previous`).
+When('I poll logs for Pod known as {string} every {string} for up to {string} with {flags} until:', function (this: World, alias: string, interval: string, timeout: string, flags: string[], table: DataTable) {
+  const pod = getRegisteredObject(this, 'pod', alias);
+  return pollRawText(this, interval, timeout, table, () => kubectlLogs(pod, 'pod', flags));
+});
+
 When('I poll events for Pod known as {string} every {string} for up to {string} until:', function (this: World, alias: string, interval: string, timeout: string, table: DataTable) {
   const pod = getRegisteredObject(this, 'pod', alias);
   return pollRawText(this, interval, timeout, table, () => kubectlEvents(pod, 'pod', []));
@@ -398,6 +475,20 @@ When('I check if Pod known as {string} can {string} {string}', function (this: W
   const parsed = JSON.parse(podJson.STDOUT);
   const serviceAccount = query(parsed, 'spec.serviceAccountName') ?? 'default';
   this.lastCommandResult = kubectlAuthCanI(pod, verb, resource, String(serviceAccount));
+});
+
+// Stateless (no alias registered/resolved) - a real namespace, usually
+// one just created via `--create-namespace` on a Helm install, has no
+// object of its own in this suite to attach an action step to. `name`
+// goes through the same soft captured-value substitution as any other
+// namespace field (a dynamically-computed namespace is the real reason
+// this exists - see PodSecurity labeling for a per-run disposable
+// BuildKit instance).
+When('I label namespace {string} with:', function (this: World, name: string, table: DataTable) {
+  this.lastCommandResult = runCommand('kubectl', ['label', 'namespace', softSubstituteCapturedValue(this, name), ...buildArgs(table)]);
+});
+When('I label namespace {string} with {flags}', function (this: World, name: string, flags: string[]) {
+  this.lastCommandResult = runCommand('kubectl', ['label', 'namespace', softSubstituteCapturedValue(this, name), ...flags]);
 });
 
 // --- TLS: inspecting a real cert-manager-issued certificate. `data.

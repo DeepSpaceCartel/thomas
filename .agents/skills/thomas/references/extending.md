@@ -428,18 +428,35 @@ sense — the reuse works because the generic `Then`s only ever care about
 exit code and raw text/structured output, not what kind of command
 produced them.
 
-## Dynamic values: capturing a response value, then using it later
+## Dynamic values: capturing a value, then using it later
 
 A server-generated value (a created resource's real `id`) is only known
 *after* a response comes back — `support/http/capture.ts` handles this
 via a *second*, narrower `<...>` mechanism scoped only to
 `World.capturedValues`, deliberately not merged with the whole-cell
 `resolveResource` system (mixing two "what does `<X>` mean" systems
-under one syntax would be genuinely ambiguous). `substituteCapturedValues`
-resolves `<...>` **embedded** anywhere in a string, not just when the
-whole cell is one alias reference. It does not run inside
-`KEY|CONDITION|VALUE` assertion tables — only inside the HTTP request
-table. See [`rest.md`](rest.md) for the user-facing steps this powers.
+under one syntax would be genuinely ambiguous). Three ways to populate
+one: an HTTP response value/header (`rest.md`), a real `process.env`
+read with a real two-level fallback (`Given the value of environment
+variable {string}, or {string}, or {string} is known as {string}` —
+`captureEnvironmentVariable`, `common.step.ts`), or composing a literal
+that itself embeds other captured values (`Given the value {string} is
+known as {string}` — the general primitive, applied directly rather
+than only from a response).
+
+`substituteCapturedValues` resolves `<...>` **embedded** anywhere in a
+string, not just when the whole cell is one alias reference — used for
+the HTTP request table and the literal-composition step above; throws
+on an unresolved `<...>`. `softSubstituteCapturedValue`/
+`substituteTableCapturedValues` are the non-throwing siblings used for
+construction tables and progressive-selector values (a `<...>` cell
+that isn't a captured value is left untouched, since it's probably a
+`resolveResource`-style alias meant for the normal resolution path
+instead) — this is what lets a captured value stand in for a
+`namespace` field on `HelmRelease`/any k8s kind. See [`rest.md`](rest.md)
+for the user-facing HTTP steps, and
+[`../../../docs/concepts/bdd-conventions.md`](../../../docs/concepts/bdd-conventions.md#dynamic-value-capture)
+for the full worked example.
 
 ## Writing a new scenario: checklist
 

@@ -53,6 +53,22 @@ Your project needs `@cucumber/cucumber` and `tsx` installed directly
 (Thomas declares both as `peerDependencies`, not bundled
 dependencies, so your project's own versions are what actually run).
 
+**Install with `npm install --install-links`** (or set `install-links=true`
+in your project's `.npmrc`, so a plain `npm install` keeps doing the
+right thing) if you're consuming Thomas via a local `file:` path (e.g.
+co-developing it alongside your project) rather than a git/registry
+install. A plain `file:` dependency is a raw symlink — if Thomas's own
+`node_modules` happens to have `@cucumber/cucumber` installed too (true
+whenever Thomas's own test suite has been run standalone), your project
+ends up loading *two* separate `@cucumber/cucumber` instances, and step
+registration silently attaches to the wrong one ("You're calling
+functions ... on an instance of Cucumber that isn't running"). Confirmed
+live consuming Thomas as `"thomas": "file:../../thomas"` from a sibling
+project — `--install-links` materializes a real, `package.json`
+`"files"`-scoped copy instead of a symlink, which sidesteps this
+entirely. A registry/git install doesn't hit this (no local `node_modules`
+to leak through), but `--install-links` is a harmless no-op there.
+
 ## Using only some of the steps
 
 The `exports` map lets you cherry-pick a single domain instead of

@@ -60,14 +60,14 @@ Feature: BDD Framework for the rest-api test fixture's health probes (short synt
       | status.containerStatuses[0].ready         | equals    | false | pass    |
       | status.containerStatuses[0].restartCount  | equals    | 0     | pass    |
 
-    # Deliberately no follow-up request to /health/ready through
-    # Endpoint here: once the Pod is confirmed NotReady above, it has
-    # been removed from the Service's endpoints entirely (that's what the
-    # poll just proved) - a request routed through the Service has no
-    # backend left to reach, so it fails to connect rather than
-    # returning a 503. The readiness-gates-traffic behavior is already
-    # fully proven by the poll above: k8s's own readinessProbe (hitting
-    # this exact path) is what flipped containerStatuses[0].ready false.
+    # No follow-up request to /health/ready through the Service Endpoint
+    # (it has no backend to reach once NotReady) - but a real HTTP
+    # Endpoint straight on the Pod's own IP bypasses the Service
+    # entirely, proving the fixture's liveness endpoint really keeps
+    # responding even while genuinely NotReady.
+    And HTTP Endpoint "<ReadinessPodApi>" on Pod known as "<ReadinessPod>" port "8000"
+    When I send a GET request to Endpoint known as "<ReadinessPodApi>" path "/health/live"
+    Then the response status is 200
 
     When I uninstall Helm Release known as "<ReadinessRelease>"
     Then the command exited with 0
@@ -77,6 +77,19 @@ Feature: BDD Framework for the rest-api test fixture's health probes (short synt
     And "<BadEndpointPayload>" field "port" is "8000"
     When I attempt to define HTTP Endpoint known as "<BadEndpoint>" using "<BadEndpointPayload>"
     Then it should have failed with 'No Service registered as "<UndefinedRestService>"'
+
+  Scenario: Rejecting both a service and a pod field on an HTTP Endpoint
+    Given "<BadBothPayload>" field "service" is "<UndefinedRestService>"
+    And "<BadBothPayload>" field "pod" is "<UndefinedRestPod>"
+    And "<BadBothPayload>" field "port" is "8000"
+    When I attempt to define HTTP Endpoint known as "<BadEndpoint>" using "<BadBothPayload>"
+    Then it should have failed with 'RestEndpoint accepts only one of "service" or "pod", not both'
+
+  Scenario: Rejecting an unregistered Pod alias from an HTTP Endpoint
+    Given "<BadPodPayload>" field "pod" is "<UndefinedRestPod>"
+    And "<BadPodPayload>" field "port" is "8000"
+    When I attempt to define HTTP Endpoint known as "<BadPodEndpoint>" using "<BadPodPayload>"
+    Then it should have failed with 'No Pod registered as "<UndefinedRestPod>"'
 
   Scenario: Reaching a real self-signed TLS listener over HTTPS
     Given Directory "<TlsRestApiChartDirectory>" at "./charts/test-rest-api"

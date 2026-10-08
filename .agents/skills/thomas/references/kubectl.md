@@ -75,6 +75,13 @@ exactly one match" error behavior as the table form. The table form
 eagerly — pick whichever reads better for a given number of predicates;
 a table is still the better fit for many labels at once.
 
+**Waiting for a fire-and-forget rollout's object to exist**:
+`When I wait for {word} known as {string} every {string} for up to
+{string}` retries real discovery itself (not a field of an already-known
+object) — needed when nothing already waited for real readiness first
+(no `--atomic`/`--wait` on the Helm install), so the object may genuinely
+not exist yet the instant discovery first runs.
+
 ## Querying a discovered object
 
 ```gherkin
@@ -292,6 +299,26 @@ declares none), which genuinely cannot create Deployments under
 standard RBAC — a real, true assertion (`features/k8s/kubernetes-short.feature`/
 `kubernetes-full.feature` — again identical in both, no `OPTION|VALUE`
 table involved).
+
+## Labeling a namespace
+
+```gherkin
+When I label namespace "<name>" with:      # kubectl label namespace <name> ...args
+When I label namespace "<name>" with {flags}
+```
+Stateless, no alias involved; `name` gets the same soft captured-value
+substitution as any namespace field. **`kubectl label`'s real argv is
+`KEY=VALUE` as one token** — write it as a positional (blank `OPTION`)
+row, not an `OPTION` row:
+```gherkin
+When I label namespace "<Namespace>" with:
+  | OPTION      | VALUE                                         |
+  |             | pod-security.kubernetes.io/enforce=privileged |
+  | --overwrite | True                                          |
+```
+Real motivating use: unblocking a privileged/rootless-unconfined
+BuildKit pod in a namespace whose default PodSecurity level (`baseline`)
+would otherwise refuse it.
 
 ## TLS certificate inspection
 

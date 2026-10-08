@@ -45,17 +45,24 @@ export function discoverByFields(kind: string, fields: Record<string, string>): 
   }
   const selector = labelKeys.map((key) => `${key}=${labels[key]}`).join(',');
 
-  const list = runCommand('kubectl', ['get', kind, '-n', namespace, '-l', selector, '-o', 'name']);
+  // `-o json`, not `-o name`: a terminating-but-still-matching object (one
+  // already deleted, waiting on a finalizer - e.g. the old Pod during a
+  // Recreate-strategy rollout) still satisfies the label selector right up
+  // until it's actually gone, and would otherwise make "exactly one match"
+  // ambiguous or wrong for a real, in-progress rollout. Excluding anything
+  // with a real `metadata.deletionTimestamp` set is the fix - the same
+  // real field `kubectl` itself uses to decide whether an object is
+  // terminating.
+  const list = runCommand('kubectl', ['get', kind, '-n', namespace, '-l', selector, '-o', 'json']);
   if (list.EXIT_CODE !== '0') {
     throw new Error(`kubectl get ${kind} failed: ${list.STDERR}`);
   }
-  const matches = list.STDOUT.split('\n').filter(Boolean);
+  const items: Array<{ metadata: { name: string; deletionTimestamp?: string } }> = JSON.parse(list.STDOUT).items;
+  const matches = items.filter((item) => !item.metadata.deletionTimestamp);
   if (matches.length !== 1) {
     throw new Error(`Expected exactly one ${kind} matching "${selector}" in namespace "${namespace}", found ${matches.length}`);
   }
-  // `-o name` prints "deployment.apps/foo" / "service/foo" - the name is
-  // always the part after the last "/".
-  return { name: matches[0].split('/').pop()!, namespace };
+  return { name: matches[0].metadata.name, namespace };
 }
 
 export function discoverByLabels(kind: string, dataTable: DataTable): K8sObjectRef {

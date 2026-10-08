@@ -71,11 +71,24 @@ export interface CommandResult {
   STDERR: string;
 }
 
+export interface RunCommandOptions {
+  // Real env-var isolation (e.g. a scoped DOCKER_CONFIG for a
+  // credential-scoped `docker buildx build`) - a genuine environment
+  // difference no CLI flag or table row can express. Defaults to the
+  // current process's own env, same as every existing call site got
+  // before this option existed.
+  env?: NodeJS.ProcessEnv;
+}
+
 // spawnSync, not execFileSync: must NOT throw on a nonzero exit code -
 // the paired `Then` step asserts the exit code itself. stdio explicitly
 // piped (not inherited) - same leak already fixed once for `helm pull`.
-export function runCommand(command: string, args: string[]): CommandResult {
-  const { stdout, stderr, status } = spawnSync(command, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+export function runCommand(command: string, args: string[], options?: RunCommandOptions): CommandResult {
+  const { stdout, stderr, status } = spawnSync(command, args, {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: options?.env ?? process.env,
+  });
   const result = {
     EXIT_CODE: String(status ?? ''),
     STDOUT: (stdout ?? '').trim(),

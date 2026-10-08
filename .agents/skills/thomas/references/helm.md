@@ -34,8 +34,18 @@ When I lint Directory "<Alias>" with {flags}
 When I package Directory known as "<Alias>" with:      # helm package <path>
 When I package Directory "<Alias>" with {flags}
 When I purge Directory known as "<Alias>"              # filesystem only, no helm call
+When I create Directory known as "<Alias>" at "<path>" # filesystem only, real mkdir -p
 When I {build|list|update} dependencies for Directory known as "<Alias>" with:
 When I {build|list|update} dependencies for Directory "<Alias>" with {flags}
+```
+
+`File` (`support/resources/file.ts`) has one real command of its own too,
+filesystem-only like `Directory`'s purge/create:
+```gherkin
+When I create File known as "<Alias>" at "<path>" with:  # real mkdir -p + write
+  """
+  <real content>
+  """
 ```
 `helm lint`/`helm package` only accept a **local path** — they take a
 `Directory`, never a Chart (which can also be a URL/OCI/reference that

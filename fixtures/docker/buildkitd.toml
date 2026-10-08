@@ -1,0 +1,11 @@
+# Trusts the real, disposable Thomas test-registry fixture
+# (charts/test-registry, installed as "thomas-docker-*-registry" in
+# thomas-helm-test) as plain HTTP - BuildKit defaults to HTTPS for any
+# registry not listed here, and the test registry has no TLS by design
+# (see charts/test-registry/Chart.yaml). Every Docker-domain feature file
+# names its registry release "thomas-docker-<file>-registry", so the
+# real DNS host here must match whichever one that scenario installs.
+[registry."thomas-docker-full-registry-test-registry.thomas-helm-test.svc.cluster.local:5000"]
+  http = true
+[registry."thomas-docker-short-registry-test-registry.thomas-helm-test.svc.cluster.local:5000"]
+  http = true

@@ -372,6 +372,16 @@ matching](#existential-vs-universal-matching) above).
 | [*].name | not_equals | thomas-remove-example |
 ```
 
+**Never use `not_equals` with a blank `VALUE` to mean "this field has a
+real value yet"** (e.g. polling for a Pod's `status.podIP` to become
+set) — a field that doesn't exist yet is `undefined`, and
+`String(undefined)` is the literal text `"undefined"`, which
+`"undefined" !== ""` reports as *already* satisfied on the very first
+tick, before the field is ever really set. Confirmed live: a poll
+written this way passed immediately, and the value used moments later
+turned out to be empty. Use [`exists`](#exists) instead — it checks
+`actual !== undefined` directly, not a string comparison.
+
 ### Greater Than
 
 `gt` (alias: `>`) Numeric comparison — both sides parsed with `Number()`, so a
@@ -489,8 +499,7 @@ A server-generated value (a created resource's real `id`) is only known
 This is a deliberately separate, narrower mechanism from alias
 resolution above — it resolves `<...>` **embedded** anywhere in a
 string (a path, or a header value like `Bearer <Token>`), not just when
-the whole cell is one alias reference, and it does not run inside
-`KEY|CONDITION|VALUE` assertion tables. Side by side:
+the whole cell is one alias reference. Side by side:
 
 ```gherkin
 # Alias resolution - whole cell, resolved when the object is
@@ -499,12 +508,52 @@ And Helm Chart "<NginxHelmChart>" in "<NginxChartDirectory>"
 
 # Captured-value substitution - embedded anywhere in a string, resolved
 # when the request/path is built, from a value only known after a real
-# response came back. Never runs inside a KEY|CONDITION|VALUE table.
+# response came back (or captured some other way - see below).
 When I send a GET request to Endpoint known as "<NotesApi>" path "/notes/<NoteId>"
 ```
 
-See [REST: capturing a dynamic
-value](../reference/REST.md#capturing-a-dynamic-value-for-later-use) for more.
+Two more ways to populate a captured value, beyond an HTTP response:
+
+```gherkin
+# A real process.env read, with a real ${VAR1:-${VAR2:-DEFAULT}} fallback
+# - never a shell. The usual real consumer is a project's own
+# namespace/naming convention (e.g. one derived from a CI/workspace
+# owner env var).
+Given the value of environment variable "CODER_WORKSPACE_OWNER_NAME", or "USER", or "local" is known as "<Owner>"
+
+# Composes a new captured value from a literal that may itself embed
+# other captured values - the general "value with substitution"
+# primitive, applied directly instead of only to an HTTP request.
+Given the value "devcontainer-builder-<Owner>-default" is known as "<Namespace>"
+```
+
+**Construction tables and progressive-selector values get a *soft*
+version of this substitution**: a `<...>` cell that matches a captured
+value is replaced; a `<...>` cell that doesn't (the common case — a
+Directory/Service/HelmChart alias meant for the resolution above) is
+left untouched for that normal resolution to handle. This is what lets
+a captured value stand in for a `namespace` field:
+
+```gherkin
+Given Helm Release known as "<Release>":
+  | PROPERTY  | VALUE          |
+  | chart     | <SomeChart>    |
+  | name      | my-release     |
+  | namespace | <Namespace>    |   # <- the captured value from above
+
+Given Deployment known as "<SomeDeployment>":
+  | PROPERTY                   | VALUE           |
+  | namespace                  | <Namespace>     |   # <- same captured value
+  | app.kubernetes.io/instance | my-release      |
+```
+
+Unlike the strict substitution used for HTTP requests/literal-value
+composition above (which throws on an unresolved `<...>`), this soft
+form never throws — an unmatched `<...>` cell is not an error here,
+since it might still be a perfectly valid alias reference for
+`resolveResource`/`discover.ts` to resolve next. See [REST: capturing a
+dynamic value](../reference/REST.md#capturing-a-dynamic-value-for-later-use)
+for more.
 
 ## Keep scenarios self-contained
 

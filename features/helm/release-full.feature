@@ -130,7 +130,7 @@ Feature: BDD Framework for Helm Releases (full table syntax)
     Then the command exited with 0
     When I install Helm Release known as "<DuplicateRelease>"
     Then the command exited with 1:
-      | SOURCE | CONDITION | VALUE                |
-      | STDERR | contains  | cannot reuse a name  |
+      | SOURCE | CONDITION | VALUE                     |
+      | STDERR | contains  | name that is still in use |
     When I uninstall Helm Release known as "<DuplicateRelease>"
     Then the command exited with 0

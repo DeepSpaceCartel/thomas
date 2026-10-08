@@ -1,6 +1,19 @@
+import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Before, BeforeAll, setDefaultTimeout } from '@cucumber/cucumber';
 import { setCurrentScenario } from './command_log.js';
+
+// Resolved from this file's own real location (features/support/hooks.ts,
+// two levels below Thomas's package root), never from the current
+// process's cwd - a consuming project's cucumber.mjs imports this file
+// wholesale (see docs/concepts/installing.md), and its own cwd is that
+// project's root, not Thomas's. A plain relative "charts/test-nginx"
+// silently resolved against the *consumer's* cwd instead, and failed
+// loudly there ("no such file or directory") the first time anything
+// outside Thomas's own repo actually loaded this hook for real.
+const THOMAS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 // cucumber-js's own default step timeout (5000ms) is far shorter than a
 // legitimate real poll used elsewhere in this suite (up to 2m, for the
@@ -28,8 +41,18 @@ setDefaultTimeout(5 * 60 * 1000);
 // changes, the output filename changes too (helm names it
 // <chart>-<version>.tgz) - a scenario referencing the old filename will
 // fail loudly instead of silently reading stale content.
+// `charts/` isn't in Thomas's own package.json "files" list (it's
+// Thomas's internal fixture set, never meant to be distributed) - a
+// consuming project installing Thomas as a dependency genuinely has no
+// `charts/test-nginx` to repackage, materialized copy or not. A no-op
+// here, not an error: this hook exists to keep Thomas's *own* test suite
+// honest, and has nothing to regenerate when it isn't that suite.
+const TEST_NGINX_CHART = path.join(THOMAS_ROOT, 'charts/test-nginx');
 BeforeAll(function () {
-  execFileSync('helm', ['package', 'charts/test-nginx', '-d', 'charts'], { stdio: ['ignore', 'pipe', 'pipe'] });
+  if (!fs.existsSync(TEST_NGINX_CHART)) {
+    return;
+  }
+  execFileSync('helm', ['package', TEST_NGINX_CHART, '-d', path.join(THOMAS_ROOT, 'charts')], { stdio: ['ignore', 'pipe', 'pipe'] });
 });
 
 // Routes every real command this scenario runs (via runCommand(), the

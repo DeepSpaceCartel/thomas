@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { dirname } from 'node:path';
 import { DataTable } from '@cucumber/cucumber';
 
 const KNOWN_FIELDS = ['path'] as const;
@@ -28,4 +29,15 @@ export class ChartFile {
 export function chartFileFromTable(dataTable: DataTable): ChartFile {
   const fields = Object.fromEntries(dataTable.hashes().map(({ PROPERTY, VALUE }) => [PROPERTY, VALUE]));
   return new ChartFile(fields);
+}
+
+// Real mkdir -p of the parent + a real write, then constructs same as any
+// other File. The counterpart to Directory's createDirectory - for a
+// scenario that needs a real file with known content on disk (a settings
+// file, a generated trust-store config) rather than one that already
+// exists in the repo.
+export function createFile(path: string, content: string): ChartFile {
+  fs.mkdirSync(dirname(path), { recursive: true });
+  fs.writeFileSync(path, content);
+  return new ChartFile({ path });
 }

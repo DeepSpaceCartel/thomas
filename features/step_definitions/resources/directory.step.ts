@@ -1,8 +1,9 @@
 import { DataTable, Given, When } from '@cucumber/cucumber';
 import { World } from '../../support/world.js';
-import { Directory, directoryFromTable, purgeDirectory } from '../../support/resources/directory.js';
+import { Directory, createDirectory, directoryFromTable, purgeDirectory } from '../../support/resources/directory.js';
 import { buildArgs, runCommand } from '../../support/run_command.js';
 import { attempt } from '../../support/attempt.js';
+import { softSubstituteCapturedValue } from '../../support/http/capture.js';
 import { getPendingPayload } from '../common.step.js';
 
 Given('Directory known as {string}:', function (this: World, alias: string, dataTable: DataTable) {
@@ -31,6 +32,16 @@ When('I attempt to define Directory known as {string} using {string}', function 
   return attempt(this, () => {
     this.directories.set(alias, new Directory(getPendingPayload(this, payloadAlias)));
   });
+});
+
+// No "with:" table - a real mkdir -p takes no flags. The counterpart to
+// "I purge Directory known as ..." below: that one requires the alias to
+// already reference an existing directory, this one makes a fresh one and
+// registers it in the same step, since there's nothing to reference first.
+// A real mutation (mkdir), so `When` like purge - not `Given`, even though
+// it also constructs the alias in the same step.
+When('I create Directory known as {string} at {string}', function (this: World, alias: string, path: string) {
+  this.directories.set(alias, createDirectory(softSubstituteCapturedValue(this, path)));
 });
 
 function getDirectory(world: World, alias: string): Directory {

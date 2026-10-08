@@ -4,6 +4,70 @@ import { DataTable, Given, Then } from '@cucumber/cucumber';
 import { World } from '../support/world.js';
 import { assertCondition, requiresValue } from '../support/assert_condition.js';
 import { query } from '../support/query.js';
+import { assertCapturedValue, captureCommandStdout, captureEnvironmentVariable, captureEnvironmentVariableWithDefault, captureFileContent, captureValueFromCommandResult, softSubstituteCapturedValue, substituteCapturedValues } from '../support/http/capture.js';
+
+// Real process.env reads (never a shell), with a real two-level
+// fallback - the same shape as `${VAR1:-${VAR2:-DEFAULT}}`. Not tied to
+// any domain; a project's own namespace/naming convention is the usual
+// real consumer.
+Given('the value of environment variable {string}, or {string}, or {string} is known as {string}', function (this: World, variable: string, fallbackVariable: string, defaultValue: string, alias: string) {
+  captureEnvironmentVariable(this, variable, fallbackVariable, defaultValue, alias);
+});
+
+// Simpler sibling of the above for the single-real-env-var case (e.g.
+// cucumber-js's own CUCUMBER_WORKER_ID, set only under --parallel) - no
+// comma before "or" and one fewer placeholder, so it's textually
+// unambiguous against the two-level fallback step above.
+Given('the value of environment variable {string} or {string} is known as {string}', function (this: World, variable: string, defaultValue: string, alias: string) {
+  captureEnvironmentVariableWithDefault(this, variable, defaultValue, alias);
+});
+
+// Composes a new captured value from a literal string that may itself
+// reference other captured values (e.g. a namespace template built from
+// a captured workspace-owner value) - the general "value with
+// substitution" primitive every other capture in this suite already
+// builds on, applied directly rather than only from an HTTP response.
+Given('the value {string} is known as {string}', function (this: World, template: string, alias: string) {
+  this.capturedValues.set(alias, substituteCapturedValues(this, template));
+});
+
+// Sourced from lastCommandResult (real STDOUT, e.g. a real `kubectl get
+// ... -o json`) rather than an HTTP response - the same real job as
+// REST's "the value at ... from the last response is known as ...",
+// for a real k8s object field instead (a Service's real ClusterIP is
+// the motivating case: kubelet's own image pulls can't resolve
+// *.svc.cluster.local at all - confirmed live, that name only resolves
+// from inside a pod's own network namespace via CoreDNS).
+Given('the value at {string} from the command result is known as {string}', function (this: World, jmespath: string, alias: string) {
+  captureValueFromCommandResult(this, jmespath, alias);
+});
+
+// The third real capture source, alongside the command-result and
+// environment-variable ones above - a real file on disk. See
+// captureFileContent's own comment for why this trims (and when that
+// matters). Soft-substituted like every other single-string path/target
+// argument in this suite (a Docker build context, an SSH scan host) - a
+// worker-scoped path built from a captured value (e.g. `<WorkerId>`)
+// reaches the real filesystem read, not a literal `<...>` token.
+Given('the content of file at {string} is known as {string}', function (this: World, path: string, alias: string) {
+  captureFileContent(this, softSubstituteCapturedValue(this, path), alias);
+});
+
+// The fourth capture source - the last command's raw STDOUT, trimmed,
+// un-parsed. See captureCommandStdout's own comment for how this
+// differs from "the value at ... from the command result", which needs
+// real structured (JSON/YAML) output to query.
+Given('the STDOUT of the last command is known as {string}', function (this: World, alias: string) {
+  captureCommandStdout(this, alias);
+});
+
+// Compares two captured values (or a captured value against a literal/
+// composed template) - see assertCapturedValue's own comment for why this
+// stays separate from the response/command SOURCE|CONDITION|VALUE
+// assertion tables, which deliberately compare against a literal only.
+Then('the value known as {string} {condition} {string}', function (this: World, alias: string, condition: string, expected: string) {
+  assertCapturedValue(this, alias, condition, expected);
+});
 
 // Generic across every object type in this suite - implementation only
 // ever reads World.lastError / World.lastCommandResult, never anything
