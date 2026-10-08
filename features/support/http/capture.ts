@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { DataTable } from '@cucumber/cucumber';
 import { World } from '../world.js';
 import { query } from '../query.js';

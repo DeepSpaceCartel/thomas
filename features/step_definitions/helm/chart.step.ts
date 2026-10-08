@@ -1,4 +1,4 @@
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { DataTable, Given, When } from '@cucumber/cucumber';
 import { World } from '../../support/world.js';
 import { HelmChart, helmChartFromFields, helmChartFromTable } from '../../support/helm/helm_chart.js';
