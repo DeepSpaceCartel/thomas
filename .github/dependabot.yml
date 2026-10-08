@@ -1,16 +1,27 @@
 version: 2
+# One grouped PR per ecosystem per week instead of one PR per dependency -
+# twelve separate PRs piled up (and conflicted with each other) before this.
 updates:
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
+    groups:
+      npm:
+        patterns: ["*"]
 
   - package-ecosystem: pip
     directory: /docs
     schedule:
       interval: weekly
+    groups:
+      docs:
+        patterns: ["*"]
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]

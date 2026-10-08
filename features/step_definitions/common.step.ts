@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { DataTable, Given, Then } from '@cucumber/cucumber';
 import { World } from '../support/world.js';
 import { assertCondition, requiresValue } from '../support/assert_condition.js';

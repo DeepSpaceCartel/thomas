@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **Runtime dependencies: `js-yaml` 5 and `undici` 8** (were 4 and 7.29.1).
+  `js-yaml` 5 has no default export (`support/http/capture.ts` and the
+  common/Helm Chart steps now `import * as yaml`), and parses YAML
+  timestamps as plain strings instead of `Date`s — a captured value is
+  now the timestamp's own text. `undici` 8 matches the `undici` major
+  that Node 26's built-in `fetch` uses for the HTTPS `Agent`.
+
 - **`@cucumber/cucumber` 13** (peer `^13.2.1`, was `^12.2.0`). Its `--parallel`
   workers are worker threads now, which don't get the `tsx` loader that
   `cucumber.mjs` registers: every `test*` script sets
