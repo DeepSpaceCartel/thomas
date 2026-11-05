@@ -30,14 +30,14 @@
   "devDependencies": {
     "@cucumber/cucumber": "^13.2.1",
     "@types/jmespath": "^0.15.2",
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   },
   "dependencies": {
     "jmespath": "^0.16.0",
     "js-yaml": "^5.5.0",
-    "undici": "8.12.2"
+    "undici": "8.12.3"
   },
   "engines": {
     "node": ">=26"
